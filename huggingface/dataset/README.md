@@ -1,7 +1,7 @@
 ---
 pretty_name: ARE Agent Studio VLA Demonstrations
 task_categories:
-- imitation-learning
+- robotics
 tags:
 - vision-language-action
 - robotics
