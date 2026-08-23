@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const esbuild = require('esbuild');
 fs.rmSync(out, { recursive: true, force: true });
 const sourceFiles = [
-  'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts',
+  'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts', 'services/displayCapture.ts',
 ];
 for (const sourceFile of sourceFiles) {
   const sourcePath = path.join(root, sourceFile);
@@ -27,6 +27,13 @@ const { NeuralPolicyEngine } = require(path.join(out, 'services/neuralPolicyEngi
 const { telemetryToDatasetRows, datasetRowsToJsonl } = require(path.join(out, 'services/datasetCodec.js'));
 const { canonicalJson, verifyDatasetReceipt, verifyOperationCorrectionReceipt } = require(path.join(out, 'services/receiptVerifier.js'));
 const { buildOperationCorrectionDraft, validateOperationCorrectionDraft } = require(path.join(out, 'services/operationCorrectionCodec.js'));
+const {
+  LIVE_DISPLAY_CAPTURE_CONSTRAINTS,
+  isDisplayCaptureSupported,
+  requestLiveDisplayCapture,
+  stopDisplayCapture,
+  toDisplayCaptureFailure,
+} = require(path.join(out, 'services/displayCapture.js'));
 const nodeCrypto = require('node:crypto');
 const { GameArchetype, TouchEventType } = require(path.join(out, 'types.js'));
 
@@ -101,4 +108,44 @@ const operationReceipt = { ...operationReceiptBody, receipt_sha256: nodeCrypto.c
 assert.equal((await verifyOperationCorrectionReceipt(operationReceipt, 1)).receipt_sha256, operationReceipt.receipt_sha256, 'operation correction receipt must verify against its canonical body');
 await assert.rejects(() => verifyOperationCorrectionReceipt({ ...operationReceipt, accepted_correction_ids: [] }, 1), /accepted_correction_ids|SHA-256/, 'tampered operation correction receipt must fail closed');
 
-console.log('frontend core regressions: 24 assertions passed');
+let requestedDisplayConstraints = null;
+let stoppedTracks = 0;
+const displayTrack = {
+  stop: () => { stoppedTracks += 1; },
+  getSettings: () => ({ width: 1920, height: 1080 }),
+};
+const displayStream = {
+  getVideoTracks: () => [displayTrack],
+  getTracks: () => [displayTrack],
+};
+const displayDevices = {
+  getDisplayMedia: async (constraints) => {
+    requestedDisplayConstraints = constraints;
+    return displayStream;
+  },
+};
+assert.equal(isDisplayCaptureSupported(displayDevices), true, 'a real getDisplayMedia surface must be detected');
+assert.equal(isDisplayCaptureSupported({}), false, 'missing getDisplayMedia must fail closed');
+const capture = await requestLiveDisplayCapture(displayDevices);
+assert.equal(capture.stream, displayStream, 'the chosen display stream must be preserved exactly');
+assert.equal(capture.videoTrack, displayTrack, 'the chosen video track must be preserved exactly');
+assert.equal(capture.resolution, '1920x1080', 'display resolution must come from the chosen track');
+assert.equal(requestedDisplayConstraints, LIVE_DISPLAY_CAPTURE_CONSTRAINTS, 'the request must use the reviewed capture constraints');
+assert.equal(requestedDisplayConstraints.audio, false, 'live display capture must not request audio');
+assert.equal(requestedDisplayConstraints.video.frameRate.max, 30, 'live display capture must bound requested frame rate');
+stopDisplayCapture(displayStream);
+assert.equal(stoppedTracks, 1, 'stopping capture must stop each active display track');
+
+let emptyStreamStopped = false;
+await assert.rejects(
+  () => requestLiveDisplayCapture({
+    getDisplayMedia: async () => ({ getVideoTracks: () => [], getTracks: () => [{ stop: () => { emptyStreamStopped = true; } }] }),
+  }),
+  (error) => error?.code === 'DISPLAY_CAPTURE_NO_VIDEO_TRACK',
+  'a stream without a video track must be rejected and never observed',
+);
+assert.equal(emptyStreamStopped, true, 'an unusable stream must be stopped immediately');
+assert.equal(toDisplayCaptureFailure({ name: 'NotAllowedError' }).code, 'DISPLAY_CAPTURE_CANCELLED', 'user cancellation must not be misreported as an active capture');
+assert.equal(toDisplayCaptureFailure({ name: 'InvalidStateError' }).code, 'DISPLAY_CAPTURE_INVALID_STATE', 'missing user activation must produce a bounded remediation message');
+
+console.log('frontend core regressions: 37 assertions passed');
