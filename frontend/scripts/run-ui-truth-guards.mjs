@@ -9,6 +9,7 @@ const operationStudio = fs.readFileSync(path.join(root, 'components', 'Operation
 const app = fs.readFileSync(path.join(root, 'App.tsx'), 'utf8');
 const shell = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const entry = fs.readFileSync(path.join(root, 'index.tsx'), 'utf8');
+const packageJson = fs.readFileSync(path.join(root, 'package.json'), 'utf8');
 
 assert.doesNotMatch(operationStudio, /Verified deterministic candidate projection/, 'an unsigned readback must not be presented as verified');
 assert.match(operationStudio, /returned by the configured daemon/, 'candidate reads must be attributed to their configured daemon');
@@ -20,5 +21,6 @@ assert.match(shell, /studio-boot-fallback/, 'the static shell must keep a visibl
 assert.match(shell, /The interactive client did not start/, 'a failed script load must not leave a black viewport');
 assert.match(entry, /StudioStartupBoundary/, 'a React render failure must be contained by the startup boundary');
 assert.match(entry, /rootElement\.dataset\.areMounted = 'true'/, 'the static shell must be marked mounted only after React takes control');
+assert.match(packageJson, /inline-production-entry\.mjs/, 'the production build must inline its self-contained client entry');
 
-console.log('frontend UI truth guards: 10 assertions passed');
+console.log('frontend UI truth guards: 11 assertions passed');
