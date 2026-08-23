@@ -35,6 +35,11 @@ class HuggingFacePresentationTest(unittest.TestCase):
         self.assertIn("does **not** claim a public dataset", SPACE_CARD.read_text(encoding="utf-8"))
         self.assertIn("not proof that a public dataset repository exists", DATASET_CARD.read_text(encoding="utf-8"))
 
+    def test_space_card_uses_hub_accepted_metadata_colours(self):
+        metadata = SPACE_CARD.read_text(encoding="utf-8").split("---", 2)[1]
+        self.assertIn("colorFrom: blue", metadata)
+        self.assertIn("colorTo: green", metadata)
+
     def test_space_packaging_preflight_requires_the_presentation_asset(self):
         result = subprocess.run(
             [sys.executable, "scripts/publish_hf_space.py", "--repo-id", "local/ci-preflight", "--dry-run"],
