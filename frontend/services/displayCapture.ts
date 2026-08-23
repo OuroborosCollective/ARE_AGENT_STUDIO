@@ -19,7 +19,7 @@ export class DisplayCaptureFailure extends Error {
  * A browser may still offer a tab or an entire display in its picker. These
  * constraints only request video and keep audio out of the capture scope.
  */
-export const LIVE_DISPLAY_CAPTURE_CONSTRAINTS: DisplayMediaStreamConstraints = {
+export const LIVE_DISPLAY_CAPTURE_CONSTRAINTS: MediaStreamConstraints = {
   video: {
     displaySurface: 'window',
     frameRate: { ideal: 30, max: 30 },
