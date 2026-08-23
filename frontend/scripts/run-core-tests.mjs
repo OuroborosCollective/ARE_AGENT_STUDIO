@@ -10,7 +10,7 @@ const root = path.resolve(here, '..');
 const out = path.join(root, '.core-test-build');
 fs.rmSync(out, { recursive: true, force: true });
 const args = [
-  '--target', 'ES2022', '--module', 'commonjs', '--moduleResolution', 'node', '--lib', 'ES2022,DOM',
+  '--target', 'ES2022', '--module', 'commonjs', '--moduleResolution', 'classic', '--lib', 'ES2022,DOM',
   '--ignoreConfig', '--skipLibCheck', '--outDir', out,
   'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts',
 ];
