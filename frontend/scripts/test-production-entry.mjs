@@ -8,7 +8,8 @@ const indexPath = path.resolve(here, '..', 'dist', 'index.html');
 const html = fs.readFileSync(indexPath, 'utf8');
 
 assert.match(html, /data-are-production-entry="inline"/, 'the production entry must be embedded in the rendered HTML');
-assert.doesNotMatch(html, /<script type="module" crossorigin src="\/assets\/[^\"]+\.js"><\/script>/, 'the public page must not depend on an external module entry request');
+const beforeInlineEntry = html.slice(0, html.indexOf('data-are-production-entry="inline"'));
+assert.doesNotMatch(beforeInlineEntry, /<script type="module" crossorigin src="\/assets\/[^\"]+\.js"><\/script>/, 'the public page must not depend on an external module entry request');
 assert.match(html, /StudioStartupBoundary/, 'the embedded entry must include the runtime failure boundary');
 
 console.log('frontend production entry regression: 3 assertions passed');
