@@ -23,9 +23,9 @@ const scriptEndsAfterInline = html.slice(inlineStart).match(/<\/script>/gi) ?? [
 assert.equal(scriptEndsAfterInline.length, 2, 'only the embedded entry and the boot fallback may close scripts after the inline entry begins');
 
 assert.doesNotMatch(html, /https:\/\/cdn\.tailwindcss\.com/, 'production HTML must not depend on the Tailwind CDN');
-const cssAssets = [...html.matchAll(/href="(\/assets\/[^\"]+\.css)"/g)].map((match) => match[1]);
-assert.ok(cssAssets.length > 0, 'production HTML must reference a compiled local CSS asset');
-const compiledCss = cssAssets.map((asset) => fs.readFileSync(path.join(dist, asset.slice(1)), 'utf8')).join('\n');
+const inlineStyleMatch = html.match(/<style data-are-production-styles="inline">\n([\s\S]*?)\n<\/style>/);
+assert.ok(inlineStyleMatch, 'production HTML must inline the compiled local stylesheet');
+const compiledCss = inlineStyleMatch[1];
 assert.match(compiledCss, /\.bg-cyber-card(?:[,{])/, 'compiled CSS must include the configured bg-cyber-card utility');
 assert.match(compiledCss, /\.border-cyber-border(?:[,{])/, 'compiled CSS must include the configured border-cyber-border utility');
 
