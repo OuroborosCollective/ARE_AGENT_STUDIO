@@ -11,7 +11,7 @@ const out = path.join(root, '.core-test-build');
 fs.rmSync(out, { recursive: true, force: true });
 const args = [
   '--target', 'ES2022', '--module', 'commonjs', '--moduleResolution', 'node', '--lib', 'ES2022,DOM',
-  '--skipLibCheck', '--outDir', out,
+  '--ignoreConfig', '--skipLibCheck', '--outDir', out,
   'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts',
 ];
 const compile = spawnSync(process.env.TSC_BIN || 'tsc', args, { cwd: root, stdio: 'inherit' });
