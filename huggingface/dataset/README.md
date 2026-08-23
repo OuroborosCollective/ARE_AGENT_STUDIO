@@ -17,7 +17,7 @@ tags:
 
 > **SIGNAL CONTROL ROOM** · Publication-approved human demonstrations with provenance, not synthetic showcase data
 
-This is the source Dataset Card for a future **ARE Agent Studio** release. Its presence in source control is **not proof that a public dataset repository exists**, that any samples have been published, or that an APK is available.
+This Dataset Card describes the private provenance repository for a future **ARE Agent Studio** release. It does **not** assert that any raw samples have been publicly released or that an APK is available.
 
 When a dataset release is actually published, the release record must name the exact Hub repository and revision and bind them to the `dataset_manifest.json` SHA-256. Do not replace this statement with a guessed or placeholder Hub URL.
 
@@ -50,7 +50,7 @@ Research and prototyping around behavioral cloning, DAgger-style human correctio
 
 ## Access and non-claims
 
-This source card supplies no raw-dataset download URL, APK download, automatic-action success count, or performance claim. Any public product page may point to the genuine Hugging Face project **only after it exists**; direct dataset retrieval is never served by the ARE public metrics endpoint. Access settings, license selection, and release visibility must be decided by the repository owner for the published snapshot, not inferred from this card.
+This source card supplies no raw-dataset download URL, APK download, automatic-action success count, or performance claim. The private provenance repository is not linked as a public dataset release; direct dataset retrieval is never served by the ARE public metrics endpoint. Access settings, license selection, and release visibility must be decided by the repository owner for the published snapshot, not inferred from this card.
 
 ## License note
 
