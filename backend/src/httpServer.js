@@ -138,6 +138,9 @@ export async function createHttpServer(options = {}) {
 
     try {
       if (req.method === 'GET' && url.pathname === '/api/v1/health') {
+        const advisoryStatus = typeof advisory.status === 'function'
+          ? advisory.status()
+          : { enabled: Boolean(advisory.enabled), provider_label: null, model: null, route_kind: 'server_openai_compatible' };
         return json(res, 200, {
           ok: true,
           service: 'are-agent-studio-dataset',
@@ -147,7 +150,10 @@ export async function createHttpServer(options = {}) {
           operation_correction_write_enabled: operationCorrectionWriteEnabled,
           verified_imitation_write_enabled: verifiedImitationWriteEnabled,
           adb_enabled: adb.enabled,
-          advisory_enabled: advisory.enabled,
+          advisory_enabled: advisoryStatus.enabled,
+          advisory_provider: advisoryStatus.provider_label,
+          advisory_model: advisoryStatus.model,
+          advisory_route_kind: advisoryStatus.route_kind,
         });
       }
       if (req.method === 'GET' && url.pathname === '/api/v1/public/metrics') {

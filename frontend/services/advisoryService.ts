@@ -1,4 +1,4 @@
-import type { GameArchetype, TacticalRule } from '../types';
+import type { AdvisoryRuntimeStatus, GameArchetype, TacticalRule } from '../types';
 import { globalServerGateway } from './serverSyncGateway';
 
 export interface VisionAnalysisResult {
@@ -52,6 +52,31 @@ async function complete(prompt: string, imageDataUrl?: string): Promise<string> 
     throw new Error(payload?.error || `Advisory gateway failed with HTTP ${response.status}`);
   }
   return payload.result.text;
+}
+
+/**
+ * Reads only non-secret runtime metadata from the configured daemon. A browser
+ * never receives, stores or chooses an advisory provider credential.
+ */
+export async function getAdvisoryRuntimeStatus(): Promise<AdvisoryRuntimeStatus> {
+  const endpoint = globalServerGateway.getEndpoint('/api/v1/health');
+  const response = await fetch(endpoint, { method: 'GET' });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload || typeof payload.advisory_enabled !== 'boolean') {
+    throw new Error(payload?.error || `Could not read advisory route status (HTTP ${response.status})`);
+  }
+  const providerLabel = typeof payload.advisory_provider === 'string' && payload.advisory_provider.trim()
+    ? payload.advisory_provider.trim()
+    : null;
+  const model = typeof payload.advisory_model === 'string' && payload.advisory_model.trim()
+    ? payload.advisory_model.trim()
+    : null;
+  return {
+    enabled: payload.advisory_enabled,
+    providerLabel,
+    model,
+    routeKind: 'server_openai_compatible',
+  };
 }
 
 export async function analyzeGameplayFrameWithAdvisory(imageDataUrl: string, humanActionContext?: string): Promise<VisionAnalysisResult> {

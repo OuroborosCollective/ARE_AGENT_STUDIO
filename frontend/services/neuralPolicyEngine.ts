@@ -33,7 +33,7 @@ export class NeuralPolicyEngine {
   public learningRate = 0.01;
   public totalTrainedBatches = 0;
   private readonly STORAGE_KEY = 'are_agent_studio_neural_policy_weights_v1';
-  public readonly seed: string;
+  public seed: string;
   private random: () => number;
   private persistWeights: boolean;
 
@@ -41,6 +41,12 @@ export class NeuralPolicyEngine {
     this.seed = seed;
     this.random = this.createSeededRandom(seed);
     this.persistWeights = persistWeights;
+    this.initializeParameters();
+
+    if (this.persistWeights) this.loadFromLocalStorage();
+  }
+
+  private initializeParameters(): void {
     this.W1 = this.initHeMatrix(this.hidden1Dim, this.inputDim);
     this.b1 = new Array(this.hidden1Dim).fill(0.01);
     this.W2 = this.initHeMatrix(this.hidden2Dim, this.hidden1Dim);
@@ -55,8 +61,18 @@ export class NeuralPolicyEngine {
     this.vW2 = this.zerosMatrix(this.hidden2Dim, this.hidden1Dim);
     this.mW3 = this.zerosMatrix(this.outputDim, this.hidden2Dim);
     this.vW3 = this.zerosMatrix(this.outputDim, this.hidden2Dim);
+    this.totalTrainedBatches = 0;
+  }
 
-    if (this.persistWeights) this.loadFromLocalStorage();
+  /**
+   * Starts a clean deterministic policy for a new local project run. The
+   * caller owns durable checkpoints; streams and credentials are never part
+   * of a policy reset.
+   */
+  public reset(seed = this.seed): void {
+    this.seed = seed;
+    this.random = this.createSeededRandom(seed);
+    this.initializeParameters();
   }
 
   private createSeededRandom(seed: string): () => number {
@@ -361,23 +377,54 @@ export class NeuralPolicyEngine {
       b2: this.b2,
       W3: this.W3,
       b3: this.b3,
+      mW1: this.mW1,
+      vW1: this.vW1,
+      mW2: this.mW2,
+      vW2: this.vW2,
+      mW3: this.mW3,
+      vW3: this.vW3,
       architecture: [this.inputDim, this.hidden1Dim, this.hidden2Dim, this.outputDim],
       seed: this.seed,
       totalTrainedBatches: this.totalTrainedBatches,
+      learningRate: this.learningRate,
     });
+  }
+
+  private isFiniteVector(value: unknown, length: number): value is number[] {
+    return Array.isArray(value) && value.length === length && value.every((entry) => typeof entry === 'number' && Number.isFinite(entry));
+  }
+
+  private isFiniteMatrix(value: unknown, rows: number, cols: number): value is number[][] {
+    return Array.isArray(value) && value.length === rows && value.every((row) => this.isFiniteVector(row, cols));
   }
 
   public loadWeightsJSON(jsonStr: string): boolean {
     try {
       const obj = JSON.parse(jsonStr);
-      if (Array.isArray(obj.W1) && Array.isArray(obj.W2) && Array.isArray(obj.W3)) {
+      const validWeights = this.isFiniteMatrix(obj.W1, this.hidden1Dim, this.inputDim)
+        && this.isFiniteVector(obj.b1, this.hidden1Dim)
+        && this.isFiniteMatrix(obj.W2, this.hidden2Dim, this.hidden1Dim)
+        && this.isFiniteVector(obj.b2, this.hidden2Dim)
+        && this.isFiniteMatrix(obj.W3, this.outputDim, this.hidden2Dim)
+        && this.isFiniteVector(obj.b3, this.outputDim);
+      if (validWeights) {
         this.W1 = obj.W1;
         this.b1 = obj.b1;
         this.W2 = obj.W2;
         this.b2 = obj.b2;
         this.W3 = obj.W3;
         this.b3 = obj.b3;
-        this.totalTrainedBatches = obj.totalTrainedBatches || 0;
+        if (typeof obj.seed === 'string' && obj.seed) this.seed = obj.seed;
+        this.totalTrainedBatches = Number.isSafeInteger(obj.totalTrainedBatches) && obj.totalTrainedBatches >= 0 ? obj.totalTrainedBatches : 0;
+        this.learningRate = typeof obj.learningRate === 'number' && Number.isFinite(obj.learningRate) && obj.learningRate > 0 ? obj.learningRate : this.learningRate;
+        // Older exported checkpoints did not contain optimizer state. They
+        // remain loadable, with clean moments rather than invented values.
+        this.mW1 = this.isFiniteMatrix(obj.mW1, this.hidden1Dim, this.inputDim) ? obj.mW1 : this.zerosMatrix(this.hidden1Dim, this.inputDim);
+        this.vW1 = this.isFiniteMatrix(obj.vW1, this.hidden1Dim, this.inputDim) ? obj.vW1 : this.zerosMatrix(this.hidden1Dim, this.inputDim);
+        this.mW2 = this.isFiniteMatrix(obj.mW2, this.hidden2Dim, this.hidden1Dim) ? obj.mW2 : this.zerosMatrix(this.hidden2Dim, this.hidden1Dim);
+        this.vW2 = this.isFiniteMatrix(obj.vW2, this.hidden2Dim, this.hidden1Dim) ? obj.vW2 : this.zerosMatrix(this.hidden2Dim, this.hidden1Dim);
+        this.mW3 = this.isFiniteMatrix(obj.mW3, this.outputDim, this.hidden2Dim) ? obj.mW3 : this.zerosMatrix(this.outputDim, this.hidden2Dim);
+        this.vW3 = this.isFiniteMatrix(obj.vW3, this.outputDim, this.hidden2Dim) ? obj.vW3 : this.zerosMatrix(this.outputDim, this.hidden2Dim);
         return true;
       }
     } catch {
@@ -387,4 +434,6 @@ export class NeuralPolicyEngine {
   }
 }
 
-export const globalNeuralPolicy = new NeuralPolicyEngine();
+// Project/run code owns persistence. A global localStorage key would mix
+// unrelated learning runs in the same browser profile.
+export const globalNeuralPolicy = new NeuralPolicyEngine('are-agent-studio-policy-v1', false);

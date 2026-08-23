@@ -6,6 +6,20 @@ ARE Agent Studio is a human-demonstration → imitation-policy → correction �
 
 ## Runtime planes
 
+### 0. Local project/run boundary
+
+The Studio may keep named projects and runs in browser IndexedDB. A run owns its
+local observation buffer, tactical rules, DAgger interventions, device/profile
+settings and a policy checkpoint (weights plus optimizer state). It has a
+stable `session_id` for dataset sequence grouping.
+
+This is intentionally a **browser-local** boundary only: it does not identify
+or authenticate a person, create a cloud account, or partition the daemon's
+server ledger. Project names stay local and are not serialized into public
+metrics or HF dataset rows. Switching a run explicitly stops display capture,
+recording and Android output; those authorities are never restored from a
+checkpoint.
+
 ### 1. Observation plane
 
 `DeviceCanvas` captures pixels from a browser-supported source and derives a 16-dimensional 4×4 luminance feature vector. It also measures luminance and frame-to-frame motion. It does not infer HP, mana, enemy count, or game success unless a future detector explicitly provides evidence for those fields.
@@ -26,7 +40,10 @@ The active browser policy is a deterministic-seed MLP:
                          └ touch probability
 ```
 
-Initialization is seeded. Model export records architecture, seed, weights, and trained-batch count. Training consumes only frame-bound observed pairs.
+Initialization is seeded. Model export records architecture, seed, weights,
+optimizer state and trained-batch count. Training consumes only frame-bound
+observed pairs. The active control model is an MLP, not an LLM, CNN, ViT, GRU
+or transformer.
 
 ### 4. DAgger correction plane
 
@@ -83,7 +100,14 @@ An optional server-side OpenAI-compatible endpoint can analyze an image or propo
 - is not observation evidence;
 - does not fill unknown state fields;
 - does not create dataset actions;
+- cannot call `trainStep()`, change a policy checkpoint, or invoke the ADB bridge;
 - fails closed if configuration/provider/JSON validation fails.
+
+The backend owns a fixed provider URL, model and secret token. The frontend may
+read only a non-secret provider/model label from health status. A compatible
+router such as OpenRouter or an approved OmniRoute-compatible deployment is an
+implementation choice for this server-side route, not a browser-side key form.
+MCP is not used as the inference or device-control transport.
 
 ### 9. Public-metrics and pricing plane
 
@@ -107,6 +131,7 @@ ADB request sent ≠ device success unless acknowledged
 advisory suggestion ≠ observed game fact
 fixture test passed ≠ live Android verified
 HF Space running ≠ durable dataset persistence
+browser-local project ≠ authenticated server tenant
 owner correction recorded ≠ permission to learn
 offline learning candidate ≠ runtime authorization
 test assertion passed ≠ verified imitation action

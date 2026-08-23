@@ -66,7 +66,12 @@ test('HTTP runtime accepts valid JSONL, returns receipt, and rejects invalid row
 
   const health = await fetch(`${base}/api/v1/health`);
   assert.equal(health.status, 200);
-  assert.equal((await health.json()).unique_samples, 0);
+  const healthPayload = await health.json();
+  assert.equal(healthPayload.unique_samples, 0);
+  assert.equal(healthPayload.advisory_enabled, false);
+  assert.equal(healthPayload.advisory_provider, null);
+  assert.equal(healthPayload.advisory_model, null);
+  assert.equal(healthPayload.advisory_route_kind, 'server_openai_compatible');
 
   const unauthorized = await fetch(`${base}/api/v1/dataset/stats`);
   assert.equal(unauthorized.status, 401);
