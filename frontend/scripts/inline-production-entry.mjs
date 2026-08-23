@@ -20,10 +20,15 @@ if (/\bimport\s*(?:\(|['"])/.test(source)) {
   throw new Error('Production entry is not self-contained and cannot be safely inlined');
 }
 
-const inlineSource = source.replace(/<\/script/gi, '<\\/script');
+const inlineSource = source.replace(/<\/script/gi, () => '<' + '\\' + '/script');
+
+if (/<\/script/i.test(inlineSource)) {
+  throw new Error('Production entry still contains an unescaped </script sequence');
+}
+
 const inlined = html.replace(
   entryMatch[0],
-  `<script type="module" data-are-production-entry="inline">\n${inlineSource}\n</script>`,
+  () => `<script type="module" data-are-production-entry="inline">\n${inlineSource}\n</script>`,
 );
 
 fs.writeFileSync(indexPath, inlined, 'utf8');
