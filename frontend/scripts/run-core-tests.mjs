@@ -1,23 +1,32 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const out = path.join(root, '.core-test-build');
+const require = createRequire(import.meta.url);
+const typescript = require('typescript');
 fs.rmSync(out, { recursive: true, force: true });
-const args = [
-  '--target', 'ES2022', '--module', 'commonjs', '--moduleResolution', 'classic', '--lib', 'ES2022,DOM',
-  '--ignoreConfig', '--skipLibCheck', '--outDir', out,
+const sourceFiles = [
   'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts',
 ];
-const compile = spawnSync(process.env.TSC_BIN || 'tsc', args, { cwd: root, stdio: 'inherit' });
-if (compile.status !== 0) process.exit(compile.status ?? 1);
+for (const sourceFile of sourceFiles) {
+  const sourcePath = path.join(root, sourceFile);
+  const compiled = typescript.transpileModule(fs.readFileSync(sourcePath, 'utf8'), {
+    compilerOptions: { target: typescript.ScriptTarget.ES2022, module: typescript.ModuleKind.CommonJS },
+    fileName: sourceFile,
+    reportDiagnostics: true,
+  });
+  const diagnostic = compiled.diagnostics?.find((entry) => entry.category === typescript.DiagnosticCategory.Error);
+  if (diagnostic) throw new Error(typescript.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
+  const outputPath = path.join(out, sourceFile.replace(/\.ts$/, '.js'));
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  fs.writeFileSync(outputPath, compiled.outputText);
+}
 fs.writeFileSync(path.join(out, 'package.json'), '{"type":"commonjs"}');
-const require = createRequire(import.meta.url);
 const { NeuralPolicyEngine } = require(path.join(out, 'services/neuralPolicyEngine.js'));
 const { telemetryToDatasetRows, datasetRowsToJsonl } = require(path.join(out, 'services/datasetCodec.js'));
 const { canonicalJson, verifyDatasetReceipt, verifyOperationCorrectionReceipt } = require(path.join(out, 'services/receiptVerifier.js'));
