@@ -32,7 +32,7 @@ class HuggingFacePresentationTest(unittest.TestCase):
             self.assertIn("assets/are-signal-hero.png", text)
             self.assertNotIn("https://huggingface.co/datasets/", text)
             self.assertNotIn("https://huggingface.co/spaces/Thorsu/ARE-Agent-Studio", text)
-        self.assertIn("does **not** claim that a public Space", SPACE_CARD.read_text(encoding="utf-8"))
+        self.assertIn("does **not** claim a public dataset", SPACE_CARD.read_text(encoding="utf-8"))
         self.assertIn("not proof that a public dataset repository exists", DATASET_CARD.read_text(encoding="utf-8"))
 
     def test_space_packaging_preflight_requires_the_presentation_asset(self):
