@@ -8,24 +8,19 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const out = path.join(root, '.core-test-build');
 const require = createRequire(import.meta.url);
-const typescriptModule = require('typescript');
-const typescript = typescriptModule.default ?? typescriptModule;
+const esbuild = require('esbuild');
 fs.rmSync(out, { recursive: true, force: true });
 const sourceFiles = [
   'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts',
 ];
 for (const sourceFile of sourceFiles) {
   const sourcePath = path.join(root, sourceFile);
-  const compiled = typescript.transpileModule(fs.readFileSync(sourcePath, 'utf8'), {
-    compilerOptions: { target: typescript.ScriptTarget.ES2022, module: typescript.ModuleKind.CommonJS },
-    fileName: sourceFile,
-    reportDiagnostics: true,
+  const compiled = esbuild.transformSync(fs.readFileSync(sourcePath, 'utf8'), {
+    loader: 'ts', format: 'cjs', target: 'es2022', sourcefile: sourceFile,
   });
-  const diagnostic = compiled.diagnostics?.find((entry) => entry.category === typescript.DiagnosticCategory.Error);
-  if (diagnostic) throw new Error(typescript.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
   const outputPath = path.join(out, sourceFile.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-  fs.writeFileSync(outputPath, compiled.outputText);
+  fs.writeFileSync(outputPath, compiled.code);
 }
 fs.writeFileSync(path.join(out, 'package.json'), '{"type":"commonjs"}');
 const { NeuralPolicyEngine } = require(path.join(out, 'services/neuralPolicyEngine.js'));
