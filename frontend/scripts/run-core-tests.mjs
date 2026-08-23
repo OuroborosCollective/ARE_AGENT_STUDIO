@@ -8,7 +8,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const out = path.join(root, '.core-test-build');
 const require = createRequire(import.meta.url);
-const typescript = require('typescript');
+const typescriptModule = require('typescript');
+const typescript = typescriptModule.default ?? typescriptModule;
 fs.rmSync(out, { recursive: true, force: true });
 const sourceFiles = [
   'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts',
