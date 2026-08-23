@@ -10,6 +10,7 @@ const app = fs.readFileSync(path.join(root, 'App.tsx'), 'utf8');
 const shell = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const entry = fs.readFileSync(path.join(root, 'index.tsx'), 'utf8');
 const packageJson = fs.readFileSync(path.join(root, 'package.json'), 'utf8');
+const deviceCanvas = fs.readFileSync(path.join(root, 'components', 'DeviceCanvas.tsx'), 'utf8');
 
 assert.doesNotMatch(operationStudio, /Verified deterministic candidate projection/, 'an unsigned readback must not be presented as verified');
 assert.match(operationStudio, /returned by the configured daemon/, 'candidate reads must be attributed to their configured daemon');
@@ -22,5 +23,11 @@ assert.match(shell, /The interactive client did not start/, 'a failed script loa
 assert.match(entry, /StudioStartupBoundary/, 'a React render failure must be contained by the startup boundary');
 assert.match(entry, /rootElement\.dataset\.areMounted = 'true'/, 'the static shell must be marked mounted only after React takes control');
 assert.match(packageJson, /inline-production-entry\.mjs/, 'the production build must inline its self-contained client entry');
+assert.match(deviceCanvas, /requestLiveDisplayCapture/, 'the live-screen CTA must invoke the browser display-capture boundary');
+assert.match(deviceCanvas, /LOCAL OBSERVATION CONSENT/, 'screen capture must present an explicit consent surface before opening the browser picker');
+assert.match(deviceCanvas, /audio is disabled/, 'the consent surface must disclose that audio is outside the capture scope');
+assert.match(deviceCanvas, /A dataset row requires a separate recording action and an accepted server receipt/, 'screen sharing alone must not be presented as dataset publication');
+assert.match(deviceCanvas, /the Studio sees pixels, not mouse, keyboard, or touch events/, 'the UI must state the screen-capture input boundary');
+assert.doesNotMatch(deviceCanvas, /videoTrack\.label/, 'the UI must not expose a selected-window label without an explicit need');
 
-console.log('frontend UI truth guards: 11 assertions passed');
+console.log('frontend UI truth guards: 17 assertions passed');
