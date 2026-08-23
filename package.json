@@ -1,0 +1,22 @@
+{
+  "name": "are-agent-studio",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=22.16 <23"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev-frontend": "npm run dev --prefix frontend",
+    "dev-backend": "npm run dev --prefix backend",
+    "dev": "node scripts/dev.mjs",
+    "test": "npm run test --prefix backend && npm run test:core --prefix frontend && python scripts/test_hf_dataset.py",
+    "check": "npm run check --prefix backend && npm run test:core --prefix frontend && npm run typecheck --prefix frontend && npm run build --prefix frontend && node scripts/truth_scan.mjs && python scripts/test_hf_dataset.py",
+    "hf:prepare": "python scripts/prepare_hf_dataset.py",
+    "hf:dataset:dry-run": "python scripts/publish_hf_dataset.py --dry-run",
+    "hf:space:dry-run": "python scripts/publish_hf_space.py --dry-run"
+  }
+}

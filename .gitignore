@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+backend/data/*.jsonl
+backend/data/*.json
+backend/data/frames/
+frontend/.vite/
+huggingface/export/
+__pycache__/
+*.pyc
+
+frontend/.core-test-build/

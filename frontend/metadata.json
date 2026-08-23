@@ -1,0 +1,6 @@
+{
+  "name": "ARE Agent Studio",
+  "description": "Evidence-bound experimental VLA studio for capturing human mobile-game demonstrations, training a small browser policy, collecting DAgger corrections, and preparing auditable datasets. Android output is opt-in and separately acknowledged by the local ADB bridge.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

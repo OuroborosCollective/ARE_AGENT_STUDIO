@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install frontend dependencies
+        run: npm install --prefix frontend --ignore-scripts --no-audit --no-fund
+      - name: Install public-site dependencies
+        run: npm install --prefix marketing-site --ignore-scripts --no-audit --no-fund
+      - name: Backend regression and syntax checks
+        run: npm run test --prefix backend && npm run check --prefix backend
+      - name: Frontend core regressions
+        run: npm run test:core --prefix frontend
+      - name: Frontend public-claim and visual-asset guards
+        run: npm run test:ui-truth --prefix frontend
+      - name: Frontend typecheck
+        run: npm run typecheck --prefix frontend
+      - name: Frontend production build
+        run: npm run build --prefix frontend
+      - name: Public-site metrics regression
+        run: npm run test:metrics --prefix marketing-site
+      - name: Public-site production build and Sites packaging
+        run: npm run build --prefix marketing-site && npm run test:sites --prefix marketing-site
+      - name: Dataset builder regressions
+        run: python scripts/test_hf_dataset.py
+      - name: Hugging Face presentation regressions
+        run: python scripts/test_hf_presentation.py
+      - name: Truth-path scan
+        run: node scripts/truth_scan.mjs
+      - name: Hugging Face Space packaging preflight
+        run: python scripts/publish_hf_space.py --repo-id local/ci-preflight --dry-run
