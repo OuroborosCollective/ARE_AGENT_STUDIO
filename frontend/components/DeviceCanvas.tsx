@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { TouchAction, TouchEventType, AgentPrediction, GameArchetype } from '../types';
 import { globalNeuralPolicy } from '../services/neuralPolicyEngine';
 import {
@@ -498,9 +499,9 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
         className="hidden"
       />
 
-      {showDisplayCaptureConsent && (
+      {showDisplayCaptureConsent && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="display-capture-title"
@@ -546,7 +547,8 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
               </button>
             </div>
           </section>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Phone Frame Wrapper */}
