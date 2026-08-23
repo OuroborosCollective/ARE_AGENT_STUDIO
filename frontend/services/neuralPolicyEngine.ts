@@ -11,20 +11,20 @@ export class NeuralPolicyEngine {
   public outputDim = 4;
 
   // Real Weight & Bias Tensors
-  public W1: number[][];
-  public b1: number[];
-  public W2: number[][];
-  public b2: number[];
-  public W3: number[][];
-  public b3: number[];
+  public W1!: number[][];
+  public b1!: number[];
+  public W2!: number[][];
+  public b2!: number[];
+  public W3!: number[][];
+  public b3!: number[];
 
   // AdamW Optimizer State Tensors (1st & 2nd moment vectors)
-  private mW1: number[][];
-  private vW1: number[][];
-  private mW2: number[][];
-  private vW2: number[][];
-  private mW3: number[][];
-  private vW3: number[][];
+  private mW1!: number[][];
+  private vW1!: number[][];
+  private mW2!: number[][];
+  private vW2!: number[][];
+  private mW3!: number[][];
+  private vW3!: number[][];
   private beta1 = 0.9;
   private beta2 = 0.999;
   private epsilon = 1e-8;
