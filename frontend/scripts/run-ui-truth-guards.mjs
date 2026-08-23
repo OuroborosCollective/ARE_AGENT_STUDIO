@@ -14,6 +14,7 @@ const deviceCanvas = fs.readFileSync(path.join(root, 'components', 'DeviceCanvas
 const projectRunMenu = fs.readFileSync(path.join(root, 'components', 'ProjectRunMenu.tsx'), 'utf8');
 const projectRunStore = fs.readFileSync(path.join(root, 'services', 'projectRunStore.ts'), 'utf8');
 const advisoryRoutePanel = fs.readFileSync(path.join(root, 'components', 'AdvisoryRoutePanel.tsx'), 'utf8');
+const observationRecorder = fs.readFileSync(path.join(root, 'components', 'ObservationRecorder.tsx'), 'utf8');
 
 assert.doesNotMatch(operationStudio, /Verified deterministic candidate projection/, 'an unsigned readback must not be presented as verified');
 assert.match(operationStudio, /returned by the configured daemon/, 'candidate reads must be attributed to their configured daemon');
@@ -47,5 +48,6 @@ assert.match(projectRunMenu, /event\.key === 'Tab'/, 'the irreversible local del
 assert.match(advisoryRoutePanel, /never calls an LLM to decide or inject a device action/, 'LLM advice must remain outside the control path');
 assert.match(advisoryRoutePanel, /A browser never receives or stores the provider token/, 'provider credentials must remain server-side');
 assert.match(advisoryRoutePanel, /MCP is not used as the model or device-control transport/, 'MCP must not be misrepresented as runtime policy transport');
+assert.match(observationRecorder, /NO LOCAL PROJECT RUN SELECTED — recording is blocked/, 'the recorder must expose the missing-project boundary instead of silently collecting into a global run');
 
-console.log('frontend UI truth guards: 32 assertions passed');
+console.log('frontend UI truth guards: 33 assertions passed');

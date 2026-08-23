@@ -24,6 +24,9 @@ interface ObservationRecorderProps {
   onPublicationAllowedChange: (allowed: boolean) => void;
   gamePhase: string;
   onGamePhaseChange: (phase: string) => void;
+  projectName: string | null;
+  runName: string | null;
+  sessionId: string | null;
 }
 
 export const ObservationRecorder: React.FC<ObservationRecorderProps> = ({
@@ -38,6 +41,9 @@ export const ObservationRecorder: React.FC<ObservationRecorderProps> = ({
   onPublicationAllowedChange,
   gamePhase,
   onGamePhaseChange,
+  projectName,
+  runName,
+  sessionId,
 }) => {
   const [selectedFrame, setSelectedFrame] = useState<FrameTelemetry | null>(null);
 
@@ -90,6 +96,9 @@ export const ObservationRecorder: React.FC<ObservationRecorderProps> = ({
                 </h2>
                 <p className="text-xs text-slate-400 font-mono">
                   Records frame/touch pairs from observed browser capture timestamps; timing stats are derived from recorded samples
+                </p>
+                <p className="mt-1 text-[10px] font-mono text-cyan-300">
+                  {projectName && runName ? `LOCAL PROJECT: ${projectName} / ${runName} · session ${sessionId?.replace(/^session-/, '').slice(0, 8) || 'pending'}` : 'NO LOCAL PROJECT RUN SELECTED — recording is blocked'}
                 </p>
               </div>
             </div>

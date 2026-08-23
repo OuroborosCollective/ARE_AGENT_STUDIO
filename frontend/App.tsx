@@ -345,7 +345,7 @@ export default function App() {
         featureVector: featVec,
         publicationAllowed,
       };
-      const nextTelemetries = [...recordedTelemetries.slice(-99), telemetry];
+      const nextTelemetries = [...recordedTelemetries, telemetry];
       setRecordedTelemetries(nextTelemetries);
       void persistActiveRun({ recordedTelemetries: nextTelemetries }).catch(() => {
         setRecordedTelemetries((previous) => previous.filter((item) => item.frameId !== telemetry.frameId));
@@ -614,6 +614,9 @@ export default function App() {
                 onPublicationAllowedChange={updatePublicationAllowed}
                 gamePhase={gamePhase}
                 onGamePhaseChange={updateGamePhase}
+                projectName={activeProject?.name || null}
+                runName={activeRun?.name || null}
+                sessionId={activeRun?.sessionId || null}
               />
             )}
 
