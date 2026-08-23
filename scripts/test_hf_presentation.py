@@ -33,7 +33,7 @@ class HuggingFacePresentationTest(unittest.TestCase):
             self.assertNotIn("https://huggingface.co/datasets/", text)
             self.assertNotIn("https://huggingface.co/spaces/Thorsu/ARE-Agent-Studio", text)
         self.assertIn("does **not** claim a public dataset", SPACE_CARD.read_text(encoding="utf-8"))
-        self.assertIn("not proof that a public dataset repository exists", DATASET_CARD.read_text(encoding="utf-8"))
+        self.assertIn("does **not** assert that any raw samples have been publicly released", DATASET_CARD.read_text(encoding="utf-8"))
 
     def test_space_card_uses_hub_accepted_metadata_colours(self):
         metadata = SPACE_CARD.read_text(encoding="utf-8").split("---", 2)[1]
