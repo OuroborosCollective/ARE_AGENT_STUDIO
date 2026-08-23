@@ -14,7 +14,7 @@ pinned: false
 
 > **SIGNAL CONTROL ROOM** · Human demonstration → evidence-bound sample → correction-aware policy research
 
-This is the source card for a Docker-based Hugging Face Space. Keeping this card in the repository does **not** claim that a public Space, a public dataset, an APK, or a measured autonomous result already exists.
+This is the source card for a Docker-based Hugging Face Space. Publishing it does **not** claim a public dataset, an APK, or a measured autonomous result.
 
 | Signal lane | Public Space boundary |
 | --- | --- |
@@ -38,7 +38,7 @@ This card deliberately displays no hard-coded dataset size, success rate, latenc
 ## Publication links
 
 - **Source repository:** [OuroborosCollective/ARE_AGENT_STUDIO](https://github.com/OuroborosCollective/ARE_AGENT_STUDIO)
-- **Hugging Face dataset:** no dataset repository is claimed by this card. Add a real Hub link only after an explicitly publication-approved, hash-verified snapshot has been published.
+- **Hugging Face dataset:** A private provenance repository exists; it publishes no raw samples and no public download link. A public Hub dataset link will be added only after an explicitly publication-approved, hash-verified snapshot is published.
 - **APK / checkout:** not configured here. This Space does not distribute an APK or process payments.
 
 ## Visual language
