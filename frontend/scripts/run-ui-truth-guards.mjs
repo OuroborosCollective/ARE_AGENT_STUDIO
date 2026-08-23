@@ -29,5 +29,7 @@ assert.match(deviceCanvas, /audio is disabled/, 'the consent surface must disclo
 assert.match(deviceCanvas, /A dataset row requires a separate recording action and an accepted server receipt/, 'screen sharing alone must not be presented as dataset publication');
 assert.match(deviceCanvas, /the Studio sees pixels, not mouse, keyboard, or touch events/, 'the UI must state the screen-capture input boundary');
 assert.doesNotMatch(deviceCanvas, /videoTrack\.label/, 'the UI must not expose a selected-window label without an explicit need');
+assert.match(deviceCanvas, /createPortal\(/, 'the consent dialog must escape the device-preview stacking context');
+assert.match(deviceCanvas, /document\.body/, 'the consent dialog must render above sibling Studio panels');
 
-console.log('frontend UI truth guards: 17 assertions passed');
+console.log('frontend UI truth guards: 19 assertions passed');
