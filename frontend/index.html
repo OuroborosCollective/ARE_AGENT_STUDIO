@@ -139,6 +139,45 @@
     .signal-action:hover {
       box-shadow: 0 14px 34px rgba(34, 211, 190, 0.25), inset 0 1px 0 rgba(237, 255, 249, 0.28);
     }
+    .studio-boot-fallback {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+      background:
+        linear-gradient(130deg, rgba(4, 16, 27, 0.90), rgba(4, 7, 13, 0.98)),
+        url('/assets/are-signal-hero.png') center / cover no-repeat;
+    }
+    .studio-boot-card {
+      width: min(42rem, 100%);
+      padding: clamp(1.5rem, 4vw, 3rem);
+      border: 1px solid rgba(113, 230, 211, 0.35);
+      border-radius: 1.25rem;
+      background: rgba(9, 24, 34, 0.84);
+      box-shadow: 0 22px 68px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(191, 255, 246, 0.1);
+      backdrop-filter: blur(20px) saturate(1.15);
+    }
+    .studio-boot-kicker {
+      margin: 0 0 0.85rem;
+      color: var(--are-cyan);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.73rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .studio-boot-title { margin: 0; font-size: clamp(2rem, 6vw, 3.6rem); line-height: 1.02; }
+    .studio-boot-title strong { color: var(--are-emerald); font-weight: inherit; }
+    .studio-boot-copy { margin: 1.1rem 0 0; max-width: 34rem; color: #bac8d5; font-size: 1rem; line-height: 1.65; }
+    .studio-boot-status {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(113, 230, 211, 0.18);
+      color: #cce8e5;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+    }
+    .studio-boot-link { color: var(--are-cyan); text-underline-offset: 0.18em; }
     :focus-visible {
       outline: 2px solid var(--are-cyan);
       outline-offset: 3px;
@@ -157,7 +196,32 @@
   </style>
   </head>
 <body class="bg-[#07090e] text-slate-100 min-h-screen selection:bg-emerald-500/30 selection:text-emerald-200">
-  <div id="root"></div>
+  <div id="root" data-are-mounted="false">
+    <main class="studio-boot-fallback" aria-live="polite" aria-busy="true">
+      <section class="studio-boot-card">
+        <p class="studio-boot-kicker">ARE Agent Studio · Signal Control Room</p>
+        <h1 class="studio-boot-title">Preparing the <strong>evidence-bound</strong> studio.</h1>
+        <p class="studio-boot-copy">The interactive client is loading. Dataset writes, exports, and Android action output remain disabled in this public runtime.</p>
+        <p class="studio-boot-status" data-are-boot-status>Starting verified client assets…</p>
+      </section>
+    </main>
+  </div>
+  <script>
+    (() => {
+      const root = document.getElementById('root');
+      const status = root?.querySelector('[data-are-boot-status]');
+      const showStartupFailure = () => {
+        if (!root || root.dataset.areMounted === 'true') return;
+        if (status) status.innerHTML = 'The interactive client did not start. <a class="studio-boot-link" href="/">Reload the Studio</a>.';
+        root.querySelector('main')?.setAttribute('aria-busy', 'false');
+      };
+      window.addEventListener('error', showStartupFailure, true);
+      window.setTimeout(() => {
+        if (!root || root.dataset.areMounted === 'true') return;
+        if (status) status.textContent = 'The interactive client is still starting. The public runtime keeps device actions and dataset writes disabled.';
+      }, 8000);
+    })();
+  </script>
   <script type="module" src="./index.tsx"></script>
 </body>
 </html>
