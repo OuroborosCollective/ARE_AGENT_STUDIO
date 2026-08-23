@@ -2,6 +2,12 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { TouchAction, TouchEventType, AgentPrediction, GameArchetype } from '../types';
 import { globalNeuralPolicy } from '../services/neuralPolicyEngine';
 import {
+  isDisplayCaptureSupported,
+  requestLiveDisplayCapture,
+  stopDisplayCapture,
+  toDisplayCaptureFailure,
+} from '../services/displayCapture';
+import {
   Monitor,
   Tv,
   Smartphone,
@@ -20,7 +26,10 @@ import {
   Link2,
   FileVideo,
   Play,
-  Pause
+  Pause,
+  ShieldCheck,
+  Eye,
+  LockKeyhole,
 } from 'lucide-react';
 
 interface DeviceCanvasProps {
@@ -48,18 +57,23 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
   const prevFrameDataRef = useRef<Uint8ClampedArray | null>(null);
   const pointerStartRef = useRef<Map<number, number>>(new Map());
   const rippleCounterRef = useRef(1);
+  const streamRef = useRef<MediaStream | null>(null);
+  const localVideoUrlRef = useRef<string | null>(null);
+  const displayConsentDialogRef = useRef<HTMLDivElement | null>(null);
+  const displayConsentCancelRef = useRef<HTMLButtonElement | null>(null);
 
   // Stream & Source State
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const [activeSourceType, setActiveSourceType] = useState<'NONE' | 'DISPLAY_MEDIA' | 'LOCAL_VIDEO' | 'NETWORK_STREAM'>('NONE');
   const [sourceTitle, setSourceTitle] = useState<string>('No Game Screen Connected');
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [captureNotice, setCaptureNotice] = useState<string | null>(null);
   const [fpsCounter, setFpsCounter] = useState(0);
   const [touchRipples, setTouchRipples] = useState<{ x: number; y: number; id: number; color: string; label?: string }[]>([]);
 
   // Network URL dialog state
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [networkStreamUrl, setNetworkStreamUrl] = useState('');
+  const [showDisplayCaptureConsent, setShowDisplayCaptureConsent] = useState(false);
 
   // Video playback controls for recorded feeds
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
@@ -73,67 +87,78 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
     resolution: '0x0',
   });
 
-  // Feature detection for getDisplayMedia across browsers and sandboxed iframes
-  const isDisplayMediaSupported = typeof navigator !== 'undefined' &&
-    ((navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function') ||
-     (typeof (navigator as any).getDisplayMedia === 'function'));
+  const isDisplayMediaSupported = typeof navigator !== 'undefined'
+    && isDisplayCaptureSupported(navigator.mediaDevices);
 
-  // 1. Safe Screen / Window Capture Handler (with fallback detection)
-  const handleStartScreenCapture = async () => {
+  const revokeLocalVideoUrl = useCallback(() => {
+    if (localVideoUrlRef.current) {
+      URL.revokeObjectURL(localVideoUrlRef.current);
+      localVideoUrlRef.current = null;
+    }
+  }, []);
+
+  const handleStopStream = useCallback((notice?: string) => {
+    const activeStream = streamRef.current;
+    streamRef.current = null;
+    stopDisplayCapture(activeStream);
+    revokeLocalVideoUrl();
+
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+      videoRef.current.removeAttribute('src');
+      videoRef.current.load();
+    }
+    setActiveSourceType('NONE');
+    setSourceTitle('No Game Screen Connected');
+    prevFrameDataRef.current = null;
+    setRealMetrics((prev) => ({ ...prev, hasSignal: false, motionIntensity: 0, resolution: '0x0' }));
+    setCaptureNotice(notice ?? null);
+  }, [revokeLocalVideoUrl]);
+
+  // 1. User-consented Screen / Window Capture Handler. The browser owns the picker.
+  const handleStartScreenCapture = useCallback(async () => {
+    setStreamError(null);
+    setCaptureNotice(null);
+    setShowDisplayCaptureConsent(false);
+    let selectedStream: MediaStream | null = null;
+
     try {
-      setStreamError(null);
+      const capture = await requestLiveDisplayCapture(
+        typeof navigator === 'undefined' ? undefined : navigator.mediaDevices,
+      );
+      selectedStream = capture.stream;
 
-      let mediaStream: MediaStream | null = null;
-
-      if (navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function') {
-        mediaStream = await navigator.mediaDevices.getDisplayMedia({
-          video: {
-            displaySurface: 'window',
-            frameRate: { ideal: 60, max: 60 },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
-          audio: false,
-        });
-      } else if (typeof (navigator as any).getDisplayMedia === 'function') {
-        mediaStream = await (navigator as any).getDisplayMedia({ video: true });
-      } else {
-        throw new Error('Screen capture is not available in this browser window. Please load a Gameplay Video Feed or Network Stream URL.');
-      }
-
-      if (!mediaStream) {
-        throw new Error('Failed to acquire screen media stream.');
-      }
-
-      const videoTrack = mediaStream.getVideoTracks()[0];
-      if (videoTrack) {
-        const settings = videoTrack.getSettings();
-        setSourceTitle(videoTrack.label || 'Display / Scrcpy Window');
-        setRealMetrics((prev) => ({
-          ...prev,
-          resolution: `${settings.width || 1080}x${settings.height || 2400}`,
-        }));
-      }
-
-      setStream(mediaStream);
+      // Do not interrupt an already-connected source until the user has selected a new source.
+      handleStopStream();
+      streamRef.current = capture.stream;
       setActiveSourceType('DISPLAY_MEDIA');
+      setSourceTitle('Live display capture · local observation');
+      setRealMetrics((prev) => ({ ...prev, resolution: capture.resolution }));
+      setCaptureNotice('Live display capture is active. Pixels remain local until you explicitly record a frame/action pair.');
 
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current.src = '';
-        videoRef.current.play().catch(() => {});
+        videoRef.current.srcObject = capture.stream;
+        await videoRef.current.play();
       }
 
-      videoTrack.onended = () => {
+      capture.videoTrack.addEventListener('ended', () => {
+        if (streamRef.current !== capture.stream) return;
+        handleStopStream('Screen sharing ended. The Studio is no longer receiving display frames.');
+      }, { once: true });
+    } catch (error) {
+      if (selectedStream && streamRef.current === selectedStream) {
         handleStopStream();
-      };
-    } catch (err: any) {
-      console.warn('Screen capture error:', err);
-      if (err.name !== 'NotAllowedError') {
-        setStreamError(err.message || 'Screen capture could not be opened. You can use the Gameplay Video Feed option below.');
       }
+      if (selectedStream) {
+        setStreamError('The selected screen could not be rendered. The Studio stopped the capture and is not observing display frames.');
+        return;
+      }
+      const failure = toDisplayCaptureFailure(error);
+      console.warn('Screen capture error:', failure.code);
+      setStreamError(failure.message);
     }
-  };
+  }, [handleStopStream]);
 
   // 2. Real Gameplay Video File Feeder (Load any Android screen recording MP4/WebM)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,8 +167,10 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
 
     handleStopStream();
     setStreamError(null);
+    setCaptureNotice(null);
 
     const fileUrl = URL.createObjectURL(file);
+    localVideoUrlRef.current = fileUrl;
     setSourceTitle(`File: ${file.name}`);
     setActiveSourceType('LOCAL_VIDEO');
 
@@ -162,6 +189,7 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
       const validUrl = new URL(url);
       handleStopStream();
       setStreamError(null);
+      setCaptureNotice(null);
       setSourceTitle(`Stream: ${validUrl.host}`);
       setActiveSourceType('NETWORK_STREAM');
       setShowUrlInput(false);
@@ -190,20 +218,41 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
     }
   };
 
-  const handleStopStream = () => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.srcObject = null;
-      videoRef.current.src = '';
-    }
-    setStream(null);
-    setActiveSourceType('NONE');
-    setSourceTitle('No Game Screen Connected');
-    setRealMetrics((prev) => ({ ...prev, hasSignal: false }));
-  };
+  useEffect(() => () => {
+    stopDisplayCapture(streamRef.current);
+    revokeLocalVideoUrl();
+  }, [revokeLocalVideoUrl]);
+
+  useEffect(() => {
+    if (!showDisplayCaptureConsent) return;
+
+    displayConsentCancelRef.current?.focus();
+    const handleDialogKeyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowDisplayCaptureConsent(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const dialog = displayConsentDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ));
+      if (!focusable.length) return;
+
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      const nextIndex = event.shiftKey
+        ? (currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1)
+        : (currentIndex === focusable.length - 1 ? 0 : currentIndex + 1);
+      event.preventDefault();
+      focusable[nextIndex].focus();
+    };
+
+    document.addEventListener('keydown', handleDialogKeyboard);
+    return () => document.removeEventListener('keydown', handleDialogKeyboard);
+  }, [showDisplayCaptureConsent]);
 
   // Touch & Action Handler mapped directly over the captured game viewport
   const handlePointerInteraction = useCallback((e: React.PointerEvent<HTMLCanvasElement>, type: TouchEventType) => {
@@ -449,6 +498,57 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
         className="hidden"
       />
 
+      {showDisplayCaptureConsent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="display-capture-title"
+          aria-describedby="display-capture-description display-capture-boundary"
+          ref={displayConsentDialogRef}
+        >
+          <section className="w-full max-w-lg rounded-2xl border border-cyan-300/30 bg-slate-950/95 p-5 shadow-2xl shadow-cyan-950/50">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-2 text-cyan-200">
+                <ScreenShare className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="font-mono text-[10px] font-bold tracking-[0.16em] text-cyan-300">LOCAL OBSERVATION CONSENT</p>
+                <h3 id="display-capture-title" className="mt-1 text-lg font-semibold text-white">Share a live game screen</h3>
+              </div>
+            </div>
+
+            <p id="display-capture-description" className="mt-4 text-sm leading-6 text-slate-300">
+              The browser will let you choose one tab, window, or display. Select only a game source you are authorised to share. The Studio cannot open or select a source by itself.
+            </p>
+
+            <div id="display-capture-boundary" className="mt-4 space-y-2 rounded-xl border border-emerald-300/20 bg-emerald-500/5 p-3 text-xs leading-5 text-slate-300">
+              <p className="flex gap-2"><Eye className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" aria-hidden="true" /><span><strong className="text-slate-100">Scope:</strong> video pixels only; audio is disabled.</span></p>
+              <p className="flex gap-2"><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" /><span><strong className="text-slate-100">Storage:</strong> sharing alone does not upload or save frames. A dataset row requires a separate recording action and an accepted server receipt.</span></p>
+              <p className="flex gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" aria-hidden="true" /><span><strong className="text-slate-100">Input boundary:</strong> the Studio sees pixels, not mouse, keyboard, or touch events inside the shared window. Continue playing in the selected game and add explicit canvas labels when recording.</span></p>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                ref={displayConsentCancelRef}
+                type="button"
+                onClick={() => setShowDisplayCaptureConsent(false)}
+                className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-slate-500 hover:text-white"
+              >
+                Cancel — do not share
+              </button>
+              <button
+                type="button"
+                onClick={handleStartScreenCapture}
+                className="rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-4 py-2 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition-transform hover:scale-[1.01]"
+              >
+                Choose source in browser
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {/* Phone Frame Wrapper */}
       <div className="relative p-3 bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 rounded-[40px] shadow-2xl border-2 border-slate-700/80 neon-border">
 
@@ -505,20 +605,36 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
               <div>
                 <h4 className="text-sm font-bold text-white font-mono">Connect Mobile Game Screen</h4>
                 <p className="text-[11px] text-slate-400 font-mono mt-1 leading-relaxed">
-                  Stream your live <b>Scrcpy window</b>, <b>Android emulator</b> (BlueStacks/Waydroid), or load a recorded gameplay feed.
+                  Share a live <b>Scrcpy window</b> or <b>Android emulator</b> (BlueStacks/Waydroid), or load a recorded gameplay feed.
                 </p>
               </div>
 
               <div className="w-full space-y-2 pt-1 font-mono text-xs">
-                {/* 1. Window Capture Button */}
+                {/* 1. User-consented live screen/window capture */}
                 {isDisplayMediaSupported && (
                   <button
-                    onClick={handleStartScreenCapture}
+                    type="button"
+                    onClick={() => {
+                      setStreamError(null);
+                      setCaptureNotice(null);
+                      setShowDisplayCaptureConsent(true);
+                    }}
+                    aria-describedby="live-capture-hint"
                     className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all"
                   >
                     <Monitor className="w-4 h-4" />
-                    <span>Select Game Window / Scrcpy</span>
+                    <span>Share a live game window</span>
                   </button>
+                )}
+
+                {isDisplayMediaSupported ? (
+                  <p id="live-capture-hint" className="px-1 text-left text-[10px] leading-4 text-slate-500">
+                    Opens the browser’s source picker. Screen pixels are observed locally; no recording starts automatically.
+                  </p>
+                ) : (
+                  <p className="rounded-lg border border-amber-300/20 bg-amber-500/5 p-2 text-left text-[10px] leading-4 text-amber-200">
+                    This browser context does not expose live screen sharing. Use a gameplay video feed instead.
+                  </p>
                 )}
 
                 {/* 2. Load Local Recorded Gameplay Feed */}
@@ -566,6 +682,13 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
                   <span>{streamError}</span>
                 </div>
               )}
+
+              {captureNotice && (
+                <div role="status" className="text-[10px] text-cyan-100 font-mono bg-cyan-950/60 p-2 rounded border border-cyan-500/30 flex items-start gap-1.5 text-left">
+                  <Radio className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-cyan-300" aria-hidden="true" />
+                  <span>{captureNotice}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -578,36 +701,45 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
 
       {/* Live Stream Controls Bar */}
       {realMetrics.hasSignal && (
-        <div className="flex items-center justify-between gap-3 mt-3 bg-slate-900/95 border border-slate-800 px-3.5 py-2 rounded-xl font-mono text-xs w-full max-w-[380px]">
-          <div className="flex items-center gap-1.5 truncate">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-            <span className="text-slate-200 truncate font-semibold" title={sourceTitle}>
-              {sourceTitle}
-            </span>
-          </div>
+        <div className="mt-3 w-full max-w-[380px] space-y-2">
+          <div className="flex items-center justify-between gap-3 bg-slate-900/95 border border-slate-800 px-3.5 py-2 rounded-xl font-mono text-xs">
+            <div className="flex items-center gap-1.5 truncate">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+              <span className="text-slate-200 truncate font-semibold" title={sourceTitle}>
+                {sourceTitle}
+              </span>
+            </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {activeSourceType === 'LOCAL_VIDEO' && (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {activeSourceType === 'LOCAL_VIDEO' && (
+                <button
+                  onClick={handleTogglePlayPause}
+                  className="p-1 rounded bg-slate-800 text-slate-300 hover:text-white"
+                  title={isVideoPlaying ? 'Pause Video' : 'Play Video'}
+                >
+                  {isVideoPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 text-emerald-400" />}
+                </button>
+              )}
+
+              <span className="text-slate-500 text-[11px]">
+                Mot: <span className="text-cyan-300 font-bold">{realMetrics.motionIntensity}%</span>
+              </span>
+
               <button
-                onClick={handleTogglePlayPause}
-                className="p-1 rounded bg-slate-800 text-slate-300 hover:text-white"
-                title={isVideoPlaying ? 'Pause Video' : 'Play Video'}
+                type="button"
+                onClick={() => handleStopStream('Live source stopped. The Studio is no longer receiving video frames.')}
+                className="text-red-400 hover:text-red-300 text-[11px] px-2 py-0.5 rounded bg-red-950/60 border border-red-800/80 transition-colors"
               >
-                {isVideoPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 text-emerald-400" />}
+                Stop
               </button>
-            )}
-
-            <span className="text-slate-500 text-[11px]">
-              Mot: <span className="text-cyan-300 font-bold">{realMetrics.motionIntensity}%</span>
-            </span>
-
-            <button
-              onClick={handleStopStream}
-              className="text-red-400 hover:text-red-300 text-[11px] px-2 py-0.5 rounded bg-red-950/60 border border-red-800/80 transition-colors"
-            >
-              Stop
-            </button>
+            </div>
           </div>
+
+          {activeSourceType === 'DISPLAY_MEDIA' && (
+            <p role="status" className="rounded-xl border border-cyan-500/20 bg-cyan-950/40 px-3 py-2 text-[10px] leading-4 text-cyan-100 font-mono">
+              Live pixels are local observation only. Keep playing in the selected source; use explicit canvas labels while recording to form frame/action training pairs.
+            </p>
+          )}
         </div>
       )}
     </div>
