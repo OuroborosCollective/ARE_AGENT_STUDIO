@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/inline-production-entry.mjs",
     "preview": "vite preview",
     "test:core": "node scripts/run-core-tests.mjs",
     "test:ui-truth": "node scripts/run-ui-truth-guards.mjs",
+    "test:production-entry": "node scripts/test-production-entry.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
