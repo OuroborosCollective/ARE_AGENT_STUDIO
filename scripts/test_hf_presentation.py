@@ -40,6 +40,10 @@ class HuggingFacePresentationTest(unittest.TestCase):
         self.assertIn("colorFrom: blue", metadata)
         self.assertIn("colorTo: green", metadata)
 
+    def test_dataset_card_uses_a_hub_accepted_task_category(self):
+        metadata = DATASET_CARD.read_text(encoding="utf-8").split("---", 2)[1]
+        self.assertIn("task_categories:\n- robotics", metadata)
+
     def test_space_packaging_preflight_requires_the_presentation_asset(self):
         result = subprocess.run(
             [sys.executable, "scripts/publish_hf_space.py", "--repo-id", "local/ci-preflight", "--dry-run"],
