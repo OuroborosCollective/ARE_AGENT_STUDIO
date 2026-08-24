@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARE Agent Studio — Evidence-Bound Visual Agent Lab</title>
+  <meta name="description" content="Record human demonstrations, bind corrections to evidence, and keep execution claims receipt-bound." />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+            },
+            cyber: {
+              dark: '#0a0d14',
+              card: '#111726',
+              border: '#1f293d',
+              neon: '#00f0ff',
+              purple: '#8b5cf6',
+              amber: '#f59e0b',
+              danger: '#ef4444',
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+    :root {
+      color-scheme: dark;
+      --are-ink: #04070d;
+      --are-panel: rgba(10, 21, 32, 0.72);
+      --are-panel-strong: rgba(12, 29, 42, 0.88);
+      --are-line: rgba(113, 230, 211, 0.22);
+      --are-cyan: #78f5ea;
+      --are-emerald: #6ee7b7;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--are-ink);
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+    #root {
+      min-height: 100vh;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d121f;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+    .neon-border {
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
+    }
+    .neon-glow-red {
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+    }
+    .signal-shell {
+      position: relative;
+      isolation: isolate;
+      background: rgba(3, 8, 14, 0.96);
+    }
+    .signal-shell::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+    .signal-shell::before {
+      z-index: 0;
+      opacity: 0.2;
+      background-image: url('/assets/are-signal-hero.png');
+      background-position: center;
+      background-size: cover;
+      background-attachment: fixed;
+      filter: saturate(1.08) contrast(1.05);
+    }
+    .signal-shell > * {
+      position: relative;
+      z-index: 1;
+    }
+    .glass-navbar {
+      background: rgba(5, 17, 26, 0.88);
+      border-color: rgba(112, 240, 218, 0.22) !important;
+      box-shadow: 0 12px 42px rgba(0, 0, 0, 0.26), inset 0 -1px 0 rgba(119, 245, 232, 0.08);
+      backdrop-filter: blur(22px) saturate(1.24);
+    }
+    .glass-panel {
+      background: rgba(9, 24, 34, 0.78) !important;
+      border-color: var(--are-line) !important;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(191, 255, 246, 0.07);
+      backdrop-filter: blur(18px) saturate(1.16);
+    }
+    .signal-shell .bg-cyber-card {
+      background: rgba(9, 24, 34, 0.78) !important;
+      border-color: var(--are-line) !important;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(191, 255, 246, 0.07);
+      backdrop-filter: blur(18px) saturate(1.16);
+    }
+    .signal-input {
+      background: rgba(3, 11, 18, 0.7) !important;
+      border-color: rgba(126, 239, 220, 0.2) !important;
+      box-shadow: inset 0 1px 0 rgba(223, 255, 250, 0.04);
+    }
+    .signal-input:focus {
+      border-color: rgba(111, 241, 223, 0.68) !important;
+      box-shadow: 0 0 0 3px rgba(57, 221, 204, 0.14), inset 0 1px 0 rgba(223, 255, 250, 0.05);
+    }
+    .signal-metric {
+      background: rgba(9, 27, 37, 0.72);
+      border: 1px solid rgba(108, 231, 213, 0.16);
+      box-shadow: inset 0 1px 0 rgba(211, 255, 248, 0.05);
+    }
+    .signal-action {
+      box-shadow: 0 10px 28px rgba(16, 185, 129, 0.18), inset 0 1px 0 rgba(237, 255, 249, 0.24);
+    }
+    .signal-action:hover {
+      box-shadow: 0 14px 34px rgba(34, 211, 190, 0.25), inset 0 1px 0 rgba(237, 255, 249, 0.28);
+    }
+    .studio-boot-fallback {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+      background:
+        linear-gradient(130deg, rgba(4, 16, 27, 0.90), rgba(4, 7, 13, 0.98)),
+        url('/assets/are-signal-hero.png') center / cover no-repeat;
+    }
+    .studio-boot-card {
+      width: min(42rem, 100%);
+      padding: clamp(1.5rem, 4vw, 3rem);
+      border: 1px solid rgba(113, 230, 211, 0.35);
+      border-radius: 1.25rem;
+      background: rgba(9, 24, 34, 0.84);
+      box-shadow: 0 22px 68px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(191, 255, 246, 0.1);
+      backdrop-filter: blur(20px) saturate(1.15);
+    }
+    .studio-boot-kicker {
+      margin: 0 0 0.85rem;
+      color: var(--are-cyan);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.73rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .studio-boot-title { margin: 0; font-size: clamp(2rem, 6vw, 3.6rem); line-height: 1.02; }
+    .studio-boot-title strong { color: var(--are-emerald); font-weight: inherit; }
+    .studio-boot-copy { margin: 1.1rem 0 0; max-width: 34rem; color: #bac8d5; font-size: 1rem; line-height: 1.65; }
+    .studio-boot-status {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(113, 230, 211, 0.18);
+      color: #cce8e5;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+    }
+    .studio-boot-link { color: var(--are-cyan); text-underline-offset: 0.18em; }
+    :focus-visible {
+      outline: 2px solid var(--are-cyan);
+      outline-offset: 3px;
+    }
+    @media (max-width: 768px) {
+      .signal-shell::before { background-attachment: scroll; opacity: 0.13; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+  </head>
+<body class="bg-[#07090e] text-slate-100 min-h-screen selection:bg-emerald-500/30 selection:text-emerald-200">
+  <div id="root" data-are-mounted="false">
+    <main class="studio-boot-fallback" aria-live="polite" aria-busy="true">
+      <section class="studio-boot-card">
+        <p class="studio-boot-kicker">ARE Agent Studio · Signal Control Room</p>
+        <h1 class="studio-boot-title">Preparing the <strong>evidence-bound</strong> studio.</h1>
+        <p class="studio-boot-copy">The interactive client is loading. Dataset writes, exports, and Android action output remain disabled in this public runtime.</p>
+        <p class="studio-boot-status" data-are-boot-status>Starting verified client assets…</p>
+      </section>
+    </main>
+  </div>
+  <script>
+    (() => {
+      const root = document.getElementById('root');
+      const status = root?.querySelector('[data-are-boot-status]');
+      const showStartupFailure = () => {
+        if (!root || root.dataset.areMounted === 'true') return;
+        if (status) status.innerHTML = 'The interactive client did not start. <a class="studio-boot-link" href="/">Reload the Studio</a>.';
+        root.querySelector('main')?.setAttribute('aria-busy', 'false');
+      };
+      window.addEventListener('error', showStartupFailure, true);
+      window.setTimeout(() => {
+        if (!root || root.dataset.areMounted === 'true') return;
+        if (status) status.textContent = 'The interactive client is still starting. The public runtime keeps device actions and dataset writes disabled.';
+      }, 8000);
+    })();
+  </script>
+  <script type="module" src="./index.tsx"></script>
+</body>
+</html>

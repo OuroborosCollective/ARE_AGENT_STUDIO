@@ -1,0 +1,14 @@
+{
+  "name": "are-agent-studio-backend",
+  "type": "module",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Evidence-bound dataset and opt-in Android action bridge for ARE Agent Studio",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env.local server.js",
+    "dev": "node --watch --env-file-if-exists=.env.local server.js",
+    "test": "node --test",
+    "check": "node --check server.js && node --check src/httpServer.js && node --check src/datasetStore.js && node --check src/validation.js && node --check src/operationCorrectionValidation.js && node --check src/operationCorrectionStore.js && node --check src/verifiedImitationValidation.js && node --check src/verifiedImitationStore.js && node --check src/publicMetrics.js && node --check src/adbBridge.js && node --check src/advisoryGateway.js"
+  }
+}
