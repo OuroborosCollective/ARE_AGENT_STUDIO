@@ -20,6 +20,7 @@
 - the public-site source uses only the aggregate public-metrics contract and renders unavailable values as unavailable rather than fabricating live evidence;
 - the Signal Control Room visual system is shared by the Studio frontend, public-site source, and local Hugging Face Cards;
 - optional advisory provider fails closed when absent or malformed;
+- named browser-local project runs isolate saved frames, rules, DAgger records and policy checkpoints; restoring a run keeps display capture, recording and Android output off;
 - known prototype fake-evidence markers are rejected by the truth scan.
 
 ## Environment limitation in this workspace
@@ -34,6 +35,7 @@ CI is configured to perform the real dependency install, TypeScript check, front
 - end-to-end autonomous success in any particular game;
 - browser compatibility for every remote video transport;
 - production-scale multi-collector storage;
+- authenticated multi-user projects, server-side owner ACLs, cloud sync or cross-device project resume;
 - a public Hugging Face dataset containing real captured samples;
 - a counted device-readback imitation record from a physical Android device (the public count starts at zero until such evidence exists);
 - a published APK/release artifact;

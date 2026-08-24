@@ -1,4 +1,5 @@
 export enum SystemMode {
+  PROJECT_RUNS = 'PROJECT_RUNS',
   OBSERVE_RECORD = 'OBSERVE_RECORD',
   GENRE_KNOWLEDGE = 'GENRE_KNOWLEDGE',
   TACTICAL_MEMORY = 'TACTICAL_MEMORY',
@@ -10,6 +11,7 @@ export enum SystemMode {
   RUNTIME_VERIFICATION = 'RUNTIME_VERIFICATION',
   PLAYSTYLE_PROFILER = 'PLAYSTYLE_PROFILER',
   CALIBRATION_BENCHMARK = 'CALIBRATION_BENCHMARK',
+  MODEL_ROUTING = 'MODEL_ROUTING',
   TERMINAL_CLI = 'TERMINAL_CLI',
   CODEBASE_EXPORT = 'CODEBASE_EXPORT',
 }
@@ -27,6 +29,7 @@ export enum PolicyArchitectureType {
   ACT_TRANSFORMER = 'ACT_TRANSFORMER',
   DIFFUSION_POLICY = 'DIFFUSION_POLICY',
   DECISION_TRANSFORMER = 'DECISION_TRANSFORMER',
+  MLP_LUMINANCE_BASELINE = 'MLP_LUMINANCE_BASELINE',
   CNN_MLP_BASELINE = 'CNN_MLP_BASELINE',
 }
 
@@ -64,6 +67,52 @@ export interface FrameTelemetry {
   sessionId: string;
   featureVector?: number[];
   publicationAllowed?: boolean;
+}
+
+/**
+ * A browser-local project is only an organizational boundary for the current
+ * browser profile. It is deliberately not presented as an authenticated user
+ * account or a server-side tenant.
+ */
+export interface LocalProject {
+  schemaVersion: 'are-agent-project.v1';
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * A run owns the local observation buffer, rules and policy checkpoint for one
+ * named learning effort. Video streams, browser permissions and credentials
+ * are intentionally excluded: none of those can safely be resumed silently.
+ */
+export interface LocalProjectRun {
+  schemaVersion: 'are-agent-project-run.v1';
+  id: string;
+  projectId: string;
+  name: string;
+  sessionId: string;
+  policySeed: string;
+  createdAt: number;
+  updatedAt: number;
+  recordedTelemetries: FrameTelemetry[];
+  rules: TacticalRule[];
+  interventions: DAggerIntervention[];
+  device: DeviceConfig;
+  gameArchetype: GameArchetype;
+  gamePhase: string;
+  publicationAllowed: boolean;
+  currentPlaystyle: PlaystyleProfile;
+  policyCheckpointJson: string | null;
+  policyTrainedBatches: number;
+}
+
+export interface AdvisoryRuntimeStatus {
+  enabled: boolean;
+  providerLabel: string | null;
+  model: string | null;
+  routeKind: 'server_openai_compatible';
 }
 
 export interface GenreStructuralCriteria {

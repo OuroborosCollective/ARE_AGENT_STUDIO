@@ -47,6 +47,11 @@ client_id
 
 The identity also binds `session_id` and `sequence_index`, so sequence provenance cannot be silently moved between episodes. The client-provided placeholder is never trusted as canonical identity.
 
+In the Studio UI, a browser-local project run owns one stable `session_id`. The
+human-readable project name is intentionally not written into the dataset row:
+it is a private browser organizational label, not a public dataset attribute or
+an authenticated server tenant identifier.
+
 ## Receipt
 
 Successful append returns `are-agent-receipt.v1` with requested/accepted/duplicate counts, accepted sample IDs, ledger SHA-256, and receipt SHA-256. The receipt SHA is calculated over the canonical receipt body excluding `receipt_sha256` itself.

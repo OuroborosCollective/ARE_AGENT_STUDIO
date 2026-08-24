@@ -6,9 +6,10 @@ import { Cpu, Play, Layers, TrendingDown, Sliders, Download, Database } from 'lu
 
 interface PolicyTrainingStudioProps {
   telemetries: FrameTelemetry[];
+  onPolicyCheckpoint: () => void;
 }
 
-export const PolicyTrainingStudio: React.FC<PolicyTrainingStudioProps> = ({ telemetries }) => {
+export const PolicyTrainingStudio: React.FC<PolicyTrainingStudioProps> = ({ telemetries, onPolicyCheckpoint }) => {
   const [epochs, setEpochs] = useState(12);
   const [learningRate, setLearningRate] = useState(0.01);
   const [isTraining, setIsTraining] = useState(false);
@@ -36,7 +37,7 @@ export const PolicyTrainingStudio: React.FC<PolicyTrainingStudioProps> = ({ tele
     if (!isTraining) return;
     if (currentEpoch > epochs) {
       setIsTraining(false);
-      globalNeuralPolicy.saveToLocalStorage();
+      onPolicyCheckpoint();
       return;
     }
 
@@ -69,11 +70,12 @@ export const PolicyTrainingStudio: React.FC<PolicyTrainingStudioProps> = ({ tele
         learningRate: globalNeuralPolicy.learningRate,
       }]);
       refreshWeightView();
+      onPolicyCheckpoint();
       setCurrentEpoch((value) => value + 1);
     }, 30);
 
     return () => window.clearTimeout(timer);
-  }, [isTraining, currentEpoch, epochs, trainingPairs]);
+  }, [isTraining, currentEpoch, epochs, trainingPairs, onPolicyCheckpoint]);
 
   const handleExportWeights = () => {
     const blob = new Blob([globalNeuralPolicy.exportWeightsJSON()], { type: 'application/json' });

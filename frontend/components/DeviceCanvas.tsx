@@ -41,6 +41,8 @@ interface DeviceCanvasProps {
   gamePhase: string;
   gameArchetype: GameArchetype;
   onDAggerInterventionTriggered?: (agentAction: [number, number], humanAction: TouchAction) => void;
+  /** Changing a local run must revoke the old run's live observation stream. */
+  projectBoundaryId: string;
 }
 
 export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
@@ -51,6 +53,7 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
   gamePhase,
   gameArchetype,
   onDAggerInterventionTriggered,
+  projectBoundaryId,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -62,6 +65,7 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
   const localVideoUrlRef = useRef<string | null>(null);
   const displayConsentDialogRef = useRef<HTMLDivElement | null>(null);
   const displayConsentCancelRef = useRef<HTMLButtonElement | null>(null);
+  const previousProjectBoundaryRef = useRef(projectBoundaryId);
 
   // Stream & Source State
   const [activeSourceType, setActiveSourceType] = useState<'NONE' | 'DISPLAY_MEDIA' | 'LOCAL_VIDEO' | 'NETWORK_STREAM'>('NONE');
@@ -223,6 +227,13 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
     stopDisplayCapture(streamRef.current);
     revokeLocalVideoUrl();
   }, [revokeLocalVideoUrl]);
+
+  useEffect(() => {
+    if (previousProjectBoundaryRef.current === projectBoundaryId) return;
+    previousProjectBoundaryRef.current = projectBoundaryId;
+    setShowDisplayCaptureConsent(false);
+    handleStopStream('Project/run changed. Live display observation stopped; share again only if you want this run to observe it.');
+  }, [handleStopStream, projectBoundaryId]);
 
   useEffect(() => {
     if (!showDisplayCaptureConsent) return;

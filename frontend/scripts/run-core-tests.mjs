@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const esbuild = require('esbuild');
 fs.rmSync(out, { recursive: true, force: true });
 const sourceFiles = [
-  'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts', 'services/displayCapture.ts',
+  'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts', 'services/displayCapture.ts', 'services/projectRunStore.ts',
 ];
 for (const sourceFile of sourceFiles) {
   const sourcePath = path.join(root, sourceFile);
@@ -24,6 +24,7 @@ for (const sourceFile of sourceFiles) {
 }
 fs.writeFileSync(path.join(out, 'package.json'), '{"type":"commonjs"}');
 const { NeuralPolicyEngine } = require(path.join(out, 'services/neuralPolicyEngine.js'));
+const { createLocalProject, createLocalProjectRun, normalizeWorkspaceName } = require(path.join(out, 'services/projectRunStore.js'));
 const { telemetryToDatasetRows, datasetRowsToJsonl } = require(path.join(out, 'services/datasetCodec.js'));
 const { canonicalJson, verifyDatasetReceipt, verifyOperationCorrectionReceipt } = require(path.join(out, 'services/receiptVerifier.js'));
 const { buildOperationCorrectionDraft, validateOperationCorrectionDraft } = require(path.join(out, 'services/operationCorrectionCodec.js'));
@@ -36,6 +37,7 @@ const {
 } = require(path.join(out, 'services/displayCapture.js'));
 const nodeCrypto = require('node:crypto');
 const { GameArchetype, TouchEventType } = require(path.join(out, 'types.js'));
+const { DEFAULT_DEVICE, PLAYSTYLE_PROFILES } = require(path.join(out, 'constants.js'));
 
 const a = new NeuralPolicyEngine('regression-seed', false);
 const b = new NeuralPolicyEngine('regression-seed', false);
@@ -49,6 +51,35 @@ let after = before;
 for (let i = 0; i < 20; i++) after = a.trainStep(features, target).loss;
 assert.ok(Number.isFinite(after), 'training loss must remain finite');
 assert.ok(after < before, `training on one observed pair should reduce loss (${before} -> ${after})`);
+
+const isolatedPolicy = new NeuralPolicyEngine('project-run-a', false);
+const untouchedPolicy = new NeuralPolicyEngine('project-run-b', false);
+const untouchedBefore = untouchedPolicy.exportWeightsJSON();
+isolatedPolicy.trainStep(features, target);
+const isolatedCheckpoint = isolatedPolicy.exportWeightsJSON();
+assert.equal(untouchedPolicy.exportWeightsJSON(), untouchedBefore, 'training one local run policy must not mutate another run policy');
+const resumedPolicy = new NeuralPolicyEngine('different-seed', false);
+assert.equal(resumedPolicy.loadWeightsJSON(isolatedCheckpoint), true, 'a complete project-run checkpoint must be resumable');
+assert.equal(resumedPolicy.exportWeightsJSON(), isolatedCheckpoint, 'a resumed project-run checkpoint must retain weights and optimizer state exactly');
+assert.equal(resumedPolicy.loadWeightsJSON('{"W1":[]}'), false, 'malformed policy checkpoints must fail closed');
+
+const runSeed = {
+  device: DEFAULT_DEVICE,
+  gameArchetype: GameArchetype.FPS,
+  gamePhase: 'COMBAT',
+  publicationAllowed: false,
+  currentPlaystyle: PLAYSTYLE_PROFILES[0],
+};
+const localProject = createLocalProject(' Arena navigation ', 10, 'project-a');
+const localRunA = createLocalProjectRun(localProject.id, 'Run Alpha', runSeed, 11, { runId: 'run-a', sessionId: 'session-a' });
+const localRunB = createLocalProjectRun(localProject.id, 'Run Beta', runSeed, 12, { runId: 'run-b', sessionId: 'session-b' });
+localRunA.recordedTelemetries.push({ frameId: 1, timestamp: 1, imageDataUrl: 'data:image/png;base64,ZmFrZQ==', action: null, gameState: 'COMBAT', hpPercentage: null, manaPercentage: null, enemiesDetected: null, genre: GameArchetype.FPS, clientId: 'local', sessionId: localRunA.sessionId });
+assert.equal(localProject.name, 'Arena navigation', 'project names must normalize only for browser-local organization');
+assert.equal(localRunA.recordedTelemetries.length, 1, 'a run owns its recorded samples');
+assert.equal(localRunB.recordedTelemetries.length, 0, 'a sibling run must not inherit recorded samples');
+assert.notEqual(localRunA.policySeed, localRunB.policySeed, 'each run requires an independent deterministic policy seed');
+assert.equal('authToken' in localRunA, false, 'project-run records must never persist provider or daemon credentials');
+assert.throws(() => normalizeWorkspaceName('', 'Project name'), /Project name/, 'empty project names must fail closed');
 
 const frame = 'data:image/png;base64,' + Buffer.from('0123456789abcdef0123456789abcdef').toString('base64');
 const telemetry = {
@@ -148,4 +179,4 @@ assert.equal(emptyStreamStopped, true, 'an unusable stream must be stopped immed
 assert.equal(toDisplayCaptureFailure({ name: 'NotAllowedError' }).code, 'DISPLAY_CAPTURE_CANCELLED', 'user cancellation must not be misreported as an active capture');
 assert.equal(toDisplayCaptureFailure({ name: 'InvalidStateError' }).code, 'DISPLAY_CAPTURE_INVALID_STATE', 'missing user activation must produce a bounded remediation message');
 
-console.log('frontend core regressions: 37 assertions passed');
+console.log('frontend core regressions: 47 assertions passed');

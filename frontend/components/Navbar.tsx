@@ -19,7 +19,9 @@ import {
   Terminal,
   Gamepad2,
   Server,
-  ShieldCheck
+  ShieldCheck,
+  FolderKanban,
+  Route,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -31,6 +33,9 @@ interface NavbarProps {
   recordedFrameCount: number;
   gameArchetype: GameArchetype;
   onSelectGameArchetype: (archetype: GameArchetype) => void;
+  activeProjectName: string | null;
+  activeRunName: string | null;
+  onOpenProjectRuns: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -42,6 +47,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   recordedFrameCount,
   gameArchetype,
   onSelectGameArchetype,
+  activeProjectName,
+  activeRunName,
+  onOpenProjectRuns,
 }) => {
   return (
     <header className="glass-navbar border-b border-cyber-border sticky top-0 z-50">
@@ -77,6 +85,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Nav Modes */}
           <nav className="glass-panel hidden lg:flex items-center gap-1 p-1 rounded-xl border overflow-x-auto max-w-2xl">
+            <button
+              onClick={onOpenProjectRuns}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                activeMode === SystemMode.PROJECT_RUNS
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <FolderKanban className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Projects</span>
+            </button>
             <button
               onClick={() => onSelectMode(SystemMode.OBSERVE_RECORD)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
@@ -116,6 +135,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-400" />
               <span>3. Memory</span>
+            </button>
+
+            <button
+              onClick={() => onSelectMode(SystemMode.MODEL_ROUTING)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                activeMode === SystemMode.MODEL_ROUTING
+                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <Route className="w-3.5 h-3.5 text-purple-400" />
+              <span>Model Route</span>
             </button>
 
             <button
@@ -229,6 +260,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action: Game Archetype & Emergency Killswitch */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={onOpenProjectRuns}
+              className="hidden xl:flex max-w-[190px] items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-950/15 px-2.5 py-1.5 text-left transition hover:border-emerald-400/50"
+              title="Open local project runs"
+            >
+              <FolderKanban className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
+              <span className="min-w-0 font-mono text-[10px] leading-tight text-emerald-100">
+                <span className="block truncate">{activeProjectName || 'No local project'}</span>
+                <span className="block truncate text-emerald-400/80">{activeRunName || 'create a run before recording'}</span>
+              </span>
+            </button>
             <div className="glass-panel hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono">
               <Gamepad2 className="w-3.5 h-3.5 text-cyan-400" />
               <select

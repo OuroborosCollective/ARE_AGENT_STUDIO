@@ -58,6 +58,7 @@ Browser capture / local video / compatible video URL
 - **Publication:** capture defaults to private/local. A row reaches the public HF export only after an explicit per-sample publication opt-in with `user_confirmed` basis.
 - **Device output:** ADB is disabled by default, serials can be allowlisted, and calls use fixed `execFile` arguments instead of shell interpolation.
 - **Advisory AI:** an optional server-side OpenAI-compatible vision endpoint may suggest tactical candidates. It is fail-closed and outside the dataset/runtime truth path.
+- **Project runs:** the Studio can save named projects and independent runs in browser IndexedDB. A run restores only its own frames, rules, DAgger records and policy checkpoint; display capture, recording, ADB output and credentials are never silently restored. This is local browser-profile organization, not an authenticated account or server-side multi-user boundary.
 - **Human-correction learning:** owner labels for proposed agent operations are a separate, append-only side channel. They can create offline review candidates only; they never authorize or execute a proposed effect.
 - **Public metrics/pricing:** the public metrics endpoint exposes aggregate counts and ledger hashes only. It starts at zero verified imitations unless a separate authenticated device-readback ledger contains complete evidence; unit tests and UI assertions never raise that count or the price.
 
@@ -169,21 +170,36 @@ Then configure the same serial/resolution in the Studio. Human touch or the ESC 
 
 ## Optional advisory provider
 
-The Studio no longer embeds a provider key in browser code. To use tactical advisory calls, configure a trusted server-side OpenAI-compatible endpoint:
+The Studio no longer embeds a provider key in browser code. The active **learning and control** path is the deterministic `16 → 32 → 16 → 4` browser MLP; it does not use an LLM. An optional LLM/VLM is limited to the separate **advisory** path, where a human manually requests a tactical candidate in Memory. It cannot train the policy, add dataset evidence, or send an ADB command.
+
+To use that advisory path, configure a fixed approved server-side OpenAI-compatible endpoint:
 
 ```env
+ADVISORY_PROVIDER_LABEL=Approved OpenAI-compatible route
 ADVISORY_API_URL=https://provider.example/v1/chat/completions
 ADVISORY_API_TOKEN=...
 ADVISORY_MODEL=...
 ```
 
-If it is unavailable or returns invalid JSON, no tactical rule is fabricated.
+This supports a compatible provider/router such as OpenRouter, or an OmniRoute deployment if it genuinely implements the required vision-capable Chat Completions contract. The key stays on the trusted server; the Studio only reads non-secret route status from `/api/v1/health`. The **Model Route** menu displays that state and the non-secret provider/model label. The browser does not offer a key field or arbitrary endpoint chooser.
+
+MCP is not the runtime model or device-control transport here. It can help external systems orchestrate tools, but the Studio’s advisory request is ordinary server-side HTTPS and the policy/device paths keep their separate evidence and consent boundaries.
+
+If the route is unavailable or returns invalid JSON, no tactical rule is fabricated.
+
+## Local projects and resumable runs
+
+Use **Projects** before recording to create a named local project and its first run. Each run receives its own stable `session_id`, deterministic policy seed and IndexedDB checkpoint. Switching runs first disarms recording and Android output, stops any live display observation, clears transient frame data, and then restores only the selected run’s saved learning state.
+
+The project name remains a browser-local organizational label and is not inserted into dataset rows, public metrics, or Hugging Face exports. A user account, cloud sync, cross-device resume, or server-enforced project isolation is not implemented yet; those require authenticated owner identity and server ACLs rather than a cosmetic menu.
 
 ## Current scope and non-claims
 
 ARE Agent Studio is a research/prototyping system, not a proven general-purpose VLA model and not evidence of successful autonomous gameplay on arbitrary games. The current learned policy is a small `16 → 32 → 16 → 4` MLP over a 4×4 luminance feature representation. A richer CNN/temporal policy is a future model lane, not something the present runtime pretends to contain.
 
 The repository also does **not** claim that ADB execution has been validated on every Android target, that browser video sources work with every scrcpy transport, or that a public HF dataset exists before real publication-approved samples have been collected.
+
+It also does **not** claim authenticated multi-user project isolation. The current Projects menu is a durable local browser workspace only.
 
 ## Responsible data collection
 

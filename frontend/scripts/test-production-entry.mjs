@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const dist = path.resolve(here, '..', 'dist');
 const indexPath = path.resolve(here, '..', 'dist', 'index.html');
 const html = fs.readFileSync(indexPath, 'utf8');
 
@@ -21,4 +22,11 @@ assert.doesNotMatch(inlineEntry, /<script src="https:\/\/cdn\.tailwindcss\.com">
 const scriptEndsAfterInline = html.slice(inlineStart).match(/<\/script>/gi) ?? [];
 assert.equal(scriptEndsAfterInline.length, 2, 'only the embedded entry and the boot fallback may close scripts after the inline entry begins');
 
-console.log('frontend production entry regression: 7 assertions passed');
+assert.doesNotMatch(html, /https:\/\/cdn\.tailwindcss\.com/, 'production HTML must not depend on the Tailwind CDN');
+const inlineStyleMatch = html.match(/<style data-are-production-styles="inline">\n([\s\S]*?)\n<\/style>/);
+assert.ok(inlineStyleMatch, 'production HTML must inline the compiled local stylesheet');
+const compiledCss = inlineStyleMatch[1];
+assert.match(compiledCss, /\.bg-cyber-card(?:[,{])/, 'compiled CSS must include the configured bg-cyber-card utility');
+assert.match(compiledCss, /\.border-cyber-border(?:[,{])/, 'compiled CSS must include the configured border-cyber-border utility');
+
+console.log('frontend production entry regression: 11 assertions passed');

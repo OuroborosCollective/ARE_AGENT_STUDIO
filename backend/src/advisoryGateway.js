@@ -20,6 +20,7 @@ export function createAdvisoryGateway(options = {}) {
   const endpoint = options.endpoint ?? process.env.ADVISORY_API_URL ?? '';
   const token = options.token ?? process.env.ADVISORY_API_TOKEN ?? '';
   const model = options.model ?? process.env.ADVISORY_MODEL ?? '';
+  const providerLabel = options.providerLabel ?? process.env.ADVISORY_PROVIDER_LABEL ?? '';
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
 
   let parsedEndpoint = null;
@@ -33,10 +34,25 @@ export function createAdvisoryGateway(options = {}) {
   }
 
   const enabled = Boolean(parsedEndpoint && model);
+  const safeProviderLabel = typeof providerLabel === 'string' && providerLabel.trim().length <= 80
+    ? providerLabel.trim()
+    : '';
+  const publishedProviderLabel = enabled ? (safeProviderLabel || parsedEndpoint.hostname) : null;
 
   return {
     enabled,
     model: model || null,
+    providerLabel: publishedProviderLabel,
+    status() {
+      // This is deliberately non-secret status only. Endpoint credentials and
+      // the full endpoint URL never leave the server process.
+      return {
+        enabled,
+        provider_label: publishedProviderLabel,
+        model: enabled ? model : null,
+        route_kind: 'server_openai_compatible',
+      };
+    },
     async complete({ prompt, imageDataUrl }) {
       if (!enabled) throw advisoryError('advisory provider is not configured', 'ADVISORY_DISABLED');
       if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 30_000) throw advisoryError('invalid advisory prompt', 'ADVISORY_INVALID_REQUEST');

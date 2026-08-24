@@ -11,6 +11,10 @@ const shell = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const entry = fs.readFileSync(path.join(root, 'index.tsx'), 'utf8');
 const packageJson = fs.readFileSync(path.join(root, 'package.json'), 'utf8');
 const deviceCanvas = fs.readFileSync(path.join(root, 'components', 'DeviceCanvas.tsx'), 'utf8');
+const projectRunMenu = fs.readFileSync(path.join(root, 'components', 'ProjectRunMenu.tsx'), 'utf8');
+const projectRunStore = fs.readFileSync(path.join(root, 'services', 'projectRunStore.ts'), 'utf8');
+const advisoryRoutePanel = fs.readFileSync(path.join(root, 'components', 'AdvisoryRoutePanel.tsx'), 'utf8');
+const observationRecorder = fs.readFileSync(path.join(root, 'components', 'ObservationRecorder.tsx'), 'utf8');
 
 assert.doesNotMatch(operationStudio, /Verified deterministic candidate projection/, 'an unsigned readback must not be presented as verified');
 assert.match(operationStudio, /returned by the configured daemon/, 'candidate reads must be attributed to their configured daemon');
@@ -31,5 +35,19 @@ assert.match(deviceCanvas, /the Studio sees pixels, not mouse, keyboard, or touc
 assert.doesNotMatch(deviceCanvas, /videoTrack\.label/, 'the UI must not expose a selected-window label without an explicit need');
 assert.match(deviceCanvas, /createPortal\(/, 'the consent dialog must escape the device-preview stacking context');
 assert.match(deviceCanvas, /document\.body/, 'the consent dialog must render above sibling Studio panels');
+assert.match(deviceCanvas, /Project\/run changed\. Live display observation stopped/, 'switching project runs must revoke a previous live display stream');
+assert.match(app, /globalProjectRunStore/, 'the Studio must use a dedicated local project-run storage boundary');
+assert.match(app, /Create and select a local project run before recording/, 'recording must fail closed until a project run exists');
+assert.match(app, /projectBoundaryId/, 'the canvas must receive a project/run boundary identifier');
+assert.match(projectRunStore, /indexedDB/, 'saved frame data must use IndexedDB rather than a localStorage snapshot');
+assert.match(projectRunStore, /never in\n \* localStorage/, 'project-run storage must document the frame-storage boundary');
+assert.match(projectRunMenu, /not a login, cloud backup or server-side tenant boundary/, 'local projects must not be misrepresented as authenticated accounts');
+assert.match(projectRunMenu, /Type .* to confirm/, 'irreversible local deletion needs a deliberate confirmation');
+assert.match(projectRunMenu, /Cancel — keep local project/, 'local deletion must provide a safe default escape route');
+assert.match(projectRunMenu, /event\.key === 'Tab'/, 'the irreversible local deletion dialog must trap keyboard focus');
+assert.match(advisoryRoutePanel, /never calls an LLM to decide or inject a device action/, 'LLM advice must remain outside the control path');
+assert.match(advisoryRoutePanel, /A browser never receives or stores the provider token/, 'provider credentials must remain server-side');
+assert.match(advisoryRoutePanel, /MCP is not used as the model or device-control transport/, 'MCP must not be misrepresented as runtime policy transport');
+assert.match(observationRecorder, /NO LOCAL PROJECT RUN SELECTED — recording is blocked/, 'the recorder must expose the missing-project boundary instead of silently collecting into a global run');
 
-console.log('frontend UI truth guards: 19 assertions passed');
+console.log('frontend UI truth guards: 33 assertions passed');
