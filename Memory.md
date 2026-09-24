@@ -124,6 +124,22 @@ Learned: The forge guard catches the frozen schema string even in comments — t
 Open: No real Forge runtime, action client, or trajectory ledger exists yet. The contract is scaffolding only.
 Next safe step: Issue #9 — ForgeAI contract discovery, SKILL.md parsing, credential isolation & action client.
 
+### 2026-09-24 — ForgeAI 03: Contract discovery, SKILL.md parsing, credential isolation & action client
+Status: VERIFIED repository merge
+Task: Implement issue #9 — Forge runner contract discovery, SKILL.md parsing, server-side credential isolation, and action client.
+Decisions:
+- New module `frontend/services/forgeContractClient.ts` (schema `forge-contract.v1`), self-contained, no imports from protected visual-path modules.
+- `validateForgeContractDiscovery` / `buildForgeContract` / `verifyForgeContractIntegrity` — contract discovery with SHA-256 integrity hash over canonical JSON body.
+- SKILL.md content is validated for credential leaks (rejects api_key=, access_token=, etc.) and size limits.
+- `ForgeCredentialVault` — server-side credential holder: `hasCredentials()` is observable, credential values are never exposed. `getAuthHeader()` throws if absent.
+- `ForgeActionClient` — submits structured actions; returns `unobservable` when no endpoint, no credentials, or no real Forge response. NEVER fabricates acceptance.
+- Practice mode is a first-class contract constraint, not an afterthought.
+Touched surfaces: frontend/services/forgeContractClient.ts (new), frontend/scripts/run-core-tests.mjs, docs/FORGEAI_INTEGRATION.md, Memory.md.
+Evidence: forge_truth_guard.mjs passes. truth_scan.mjs passes. Frontend core regressions 58 assertions pass (20 new). Frontend typecheck passes.
+Learned: The credential vault pattern (observable presence, hidden value) is the correct boundary for server-side secrets in a contract module — it lets the action client make safe decisions without ever touching the secret in client code.
+Open: No real Forge runtime, endpoint, or credentials exist yet. The action client is scaffolding only.
+Next safe step: Issue #10 — append-only Forge trajectory ledger, receipts & tamper detection.
+
 ## Backfill boundary
 
 This bootstrap captures retrievable ARE Agent Studio integration history. It is not a transcript. Older recovered blocks must be appended as `Historical recovery` entries rather than rewriting these records.

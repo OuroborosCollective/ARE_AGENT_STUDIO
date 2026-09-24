@@ -120,7 +120,7 @@ Secrets are kept server-side on the VPS runner or delivered via platform-managed
 |---|---|---|
 | #7 | Freeze canonical architecture, AI Studio boundary & agent instructions | This issue |
 | #8 | Versioned structured-control policy contract | Implemented |
-| #9 | ForgeAI contract discovery, SKILL.md parsing, credential isolation & action client | Planned |
+| #9 | ForgeAI contract discovery, SKILL.md parsing, credential isolation & action client | Implemented |
 | #10 | Append-only Forge trajectory ledger, receipts & tamper detection | Planned |
 | #11 | Durable VPS Forge runner with restart-safe run state machine | Planned |
 | #12 | Independent terminal trajectory reconciliation against ForgeAI readback | Planned |

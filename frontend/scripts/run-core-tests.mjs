@@ -13,6 +13,7 @@ fs.rmSync(out, { recursive: true, force: true });
 const sourceFiles = [
   'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts',
   'services/forgeStructuredPolicy.ts',
+  'services/forgeContractClient.ts',
 ];
 for (const sourceFile of sourceFiles) {
   const sourcePath = path.join(root, sourceFile);
@@ -29,6 +30,7 @@ const { telemetryToDatasetRows, datasetRowsToJsonl } = require(path.join(out, 's
 const { canonicalJson, verifyDatasetReceipt, verifyOperationCorrectionReceipt } = require(path.join(out, 'services/receiptVerifier.js'));
 const { buildOperationCorrectionDraft, validateOperationCorrectionDraft } = require(path.join(out, 'services/operationCorrectionCodec.js'));
 const { validateForgeTrajectoryDraft, buildForgeTrajectoryDraft, DeterministicSelectFirstPolicy, FORGE_TRAJECTORY_SCHEMA_VERSION } = require(path.join(out, 'services/forgeStructuredPolicy.js'));
+const { validateForgeContractDiscovery, buildForgeContract, verifyForgeContractIntegrity, ForgeCredentialVault, ForgeActionClient, FORGE_CONTRACT_SCHEMA_VERSION } = require(path.join(out, 'services/forgeContractClient.js'));
 const nodeCrypto = require('node:crypto');
 const { GameArchetype, TouchEventType } = require(path.join(out, 'types.js'));
 
@@ -155,4 +157,62 @@ assert.equal(policyPrediction.target_ref, 'forge.route.a', 'deterministic select
 assert.equal(policy.policy_revision_sha256, 'd'.repeat(64), 'policy must expose its revision hash');
 assert.equal(policy.schema_version, FORGE_TRAJECTORY_SCHEMA_VERSION, 'policy contract must declare the forge-trajectory.v1 schema');
 
-console.log('frontend core regressions: 38 assertions passed');
+// --- ForgeAI contract discovery, SKILL.md parsing, credential isolation & action client (#9) ---
+
+const contractInput = {
+  contractId: 'forge-contract-001',
+  gameRef: 'forge.game.example',
+  skillMdContent: '# SKILL.md\n\nNavigate the Forge evaluation environment.\n\nAvailable actions: navigate, select, submit, query.',
+  availableActionTypes: ['navigate', 'select', 'submit', 'query'],
+  constraints: { maxTurns: 100, timeoutSeconds: 3600, allowedRiskTiers: ['reversible', 'external'], practiceMode: true },
+  discoveredAtEpoch: 2000,
+};
+assert.deepEqual(validateForgeContractDiscovery(contractInput), [], 'complete non-secret forge contract input must validate');
+const contract = await buildForgeContract(contractInput);
+assert.equal(contract.schema_version, FORGE_CONTRACT_SCHEMA_VERSION, 'contract must use the forge-contract.v1 schema');
+assert.equal(contract.contract_id, 'forge-contract-001', 'contract must preserve the contract reference');
+assert.equal(contract.constraints.practice_mode, true, 'contract must preserve practice mode flag');
+assert.deepEqual(contract.constraints.allowed_risk_tiers, ['reversible', 'external'], 'contract must preserve allowed risk tiers');
+assert.match(contract.skill_md_sha256, /^[a-f0-9]{64}$/, 'SKILL.md hash must be a SHA-256 digest');
+assert.match(contract.contract_sha256, /^[a-f0-9]{64}$/, 'contract hash must be a SHA-256 digest');
+assert.ok(await verifyForgeContractIntegrity(contract), 'untampered contract must verify its integrity hash');
+
+// Tampered contract must fail integrity check
+const tamperedContract = { ...contract, game_ref: 'forge.game.tampered' };
+assert.ok(!(await verifyForgeContractIntegrity(tamperedContract)), 'tampered contract must fail integrity check');
+
+// Credential leak in SKILL.md must be rejected
+assert.ok(validateForgeContractDiscovery({ ...contractInput, skillMdContent: 'api_key=abc123' }).length > 0, 'SKILL.md with credential assignment must be rejected');
+// Empty SKILL.md must be rejected
+assert.ok(validateForgeContractDiscovery({ ...contractInput, skillMdContent: '' }).length > 0, 'empty SKILL.md must be rejected');
+// Invalid action types must be rejected
+assert.ok(validateForgeContractDiscovery({ ...contractInput, availableActionTypes: ['Navigate'] }).length > 0, 'non-lowercase action types must be rejected');
+
+// Credential vault: presence is observable, value is never exposed
+const vaultWithCred = new ForgeCredentialVault('forge-run-001', 'secret-token-value');
+assert.equal(vaultWithCred.hasCredentials(), true, 'vault with credential must report presence');
+assert.equal(vaultWithCred.getRunId(), 'forge-run-001', 'vault must expose run ID');
+const vaultEmpty = new ForgeCredentialVault('forge-run-002', null);
+assert.equal(vaultEmpty.hasCredentials(), false, 'vault without credential must report absence');
+assert.throws(() => vaultEmpty.getAuthHeader(), /no credential/, 'vault without credential must throw on getAuthHeader');
+
+// Action client: no endpoint → unobservable, never fabricated
+const clientNoEndpoint = new ForgeActionClient(vaultWithCred, null);
+const resultNoEndpoint = clientNoEndpoint.submitAction(forgeEntry.predicted_action, 0, 2001);
+assert.equal(resultNoEndpoint.outcome, 'unobservable', 'action client without endpoint must return unobservable, never fabricated');
+assert.equal(resultNoEndpoint.submitted_action, null, 'unobservable result must not carry a submitted action');
+assert.equal(resultNoEndpoint.forge_receipt_id, null, 'unobservable result must not carry a forge receipt id');
+
+// Action client: no credentials → unobservable
+const clientNoCreds = new ForgeActionClient(vaultEmpty, 'https://forge.example/api');
+const resultNoCreds = clientNoCreds.submitAction(forgeEntry.predicted_action, 0, 2002);
+assert.equal(resultNoCreds.outcome, 'unobservable', 'action client without credentials must return unobservable');
+assert.equal(resultNoCreds.error_message, 'No Forge credentials present — submission is unobservable.', 'must explain the unobservable reason');
+
+// Action client: endpoint + credentials but no real Forge → still unobservable (scaffolding)
+const clientScaffold = new ForgeActionClient(vaultWithCred, 'https://forge.example/api');
+const resultScaffold = clientScaffold.submitAction(forgeEntry.predicted_action, 0, 2003);
+assert.equal(resultScaffold.outcome, 'unobservable', 'scaffolding action client must never fabricate acceptance');
+assert.equal(resultScaffold.submitted_action, null, 'scaffolding result must not carry a submitted action');
+
+console.log('frontend core regressions: 58 assertions passed');
