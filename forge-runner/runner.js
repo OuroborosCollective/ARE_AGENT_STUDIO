@@ -95,7 +95,9 @@ export class ForgeRunner {
       : submissionResult.outcome === 'unobservable' ? 'network_error'
       : 'pending';
 
-    const status = httpStatusCategory === 'network_error' ? 'pending_reconciliation' : 'accepted';
+    const status = httpStatusCategory === '2xx' ? 'accepted'
+      : httpStatusCategory === '4xx' ? 'rejected'
+      : 'pending_reconciliation';
 
     if (this.trajectoryStore) {
       await this.trajectoryStore.append({

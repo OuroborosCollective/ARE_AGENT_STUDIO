@@ -215,6 +215,128 @@ test('getRunnerHealth returns all required fields', () => {
   assert.equal(health.reconciliation_backlog, 2);
 });
 
+// --- runTurn status mapping regression ---
+
+function makeMockPolicy() {
+  return {
+    policy_revision_sha256: 'c'.repeat(64),
+    predict: () => ({
+      action_type: 'select', target_ref: 'a', parameters: {},
+      action_summary: 'test', parameters_sha256: 'd'.repeat(64),
+      risk_tier: 'reversible', rationale: 'test', confidence: 1,
+    }),
+  };
+}
+
+function makeMockContract() {
+  return {
+    constraints: { practice_mode: true },
+    contract_sha256: 'a'.repeat(64),
+    skill_md_sha256: 'b'.repeat(64),
+  };
+}
+
+function makeObservation(turnIndex = 0) {
+  return {
+    observation_id: `obs-${turnIndex}`,
+    turn_index: turnIndex,
+    captured_at_epoch: 1000 + turnIndex,
+    state_summary: 'test state',
+    available_actions: ['route.a', 'route.b'],
+    observation_evidence_sha256: 'e'.repeat(64),
+  };
+}
+
+test('runTurn maps accepted outcome to accepted status', async () => {
+  const dataDir = await createTempDir();
+  const runner = new ForgeRunner({
+    dataDir,
+    trajectoryStore: null,
+    actionClient: { submitAction: () => ({ outcome: 'accepted', forge_receipt_id: 'rcpt-1', error_message: null }) },
+    policy: makeMockPolicy(),
+    contract: makeMockContract(),
+  });
+  await runner.prepare('run-1');
+  await runner.start();
+  const result = await runner.runTurn(makeObservation());
+  assert.equal(result.outcome, 'accepted');
+  assert.equal(result.status, 'accepted');
+  await fs.rm(dataDir, { recursive: true, force: true });
+});
+
+test('runTurn maps rejected outcome to rejected status (regression: was falsely accepted)', async () => {
+  const dataDir = await createTempDir();
+  const runner = new ForgeRunner({
+    dataDir,
+    trajectoryStore: null,
+    actionClient: { submitAction: () => ({ outcome: 'rejected', forge_receipt_id: null, error_message: 'rejected by Forge' }) },
+    policy: makeMockPolicy(),
+    contract: makeMockContract(),
+  });
+  await runner.prepare('run-1');
+  await runner.start();
+  const result = await runner.runTurn(makeObservation());
+  assert.equal(result.outcome, 'rejected');
+  assert.equal(result.status, 'rejected', 'rejected outcome must produce rejected status, not accepted');
+  await fs.rm(dataDir, { recursive: true, force: true });
+});
+
+test('runTurn maps unobservable outcome to pending_reconciliation status', async () => {
+  const dataDir = await createTempDir();
+  const runner = new ForgeRunner({
+    dataDir,
+    trajectoryStore: null,
+    actionClient: { submitAction: () => ({ outcome: 'unobservable', forge_receipt_id: null, error_message: 'no endpoint' }) },
+    policy: makeMockPolicy(),
+    contract: makeMockContract(),
+  });
+  await runner.prepare('run-1');
+  await runner.start();
+  const result = await runner.runTurn(makeObservation());
+  assert.equal(result.outcome, 'unobservable');
+  assert.equal(result.status, 'pending_reconciliation');
+  await fs.rm(dataDir, { recursive: true, force: true });
+});
+
+test('runTurn with no action client defaults to pending_reconciliation', async () => {
+  const dataDir = await createTempDir();
+  const runner = new ForgeRunner({
+    dataDir,
+    trajectoryStore: null,
+    actionClient: null,
+    policy: makeMockPolicy(),
+    contract: makeMockContract(),
+  });
+  await runner.prepare('run-1');
+  await runner.start();
+  const result = await runner.runTurn(makeObservation());
+  assert.equal(result.outcome, 'unobservable');
+  assert.equal(result.status, 'pending_reconciliation');
+  await fs.rm(dataDir, { recursive: true, force: true });
+});
+
+test('runTurn records correct status in trajectory store', async () => {
+  const dataDir = await createTempDir();
+  const appendedRecords = [];
+  const mockStore = {
+    append: async (input) => { appendedRecords.push(input); },
+  };
+  const runner = new ForgeRunner({
+    dataDir,
+    trajectoryStore: mockStore,
+    actionClient: { submitAction: () => ({ outcome: 'rejected', forge_receipt_id: null, error_message: 'rejected' }) },
+    policy: makeMockPolicy(),
+    contract: makeMockContract(),
+  });
+  await runner.prepare('run-1');
+  await runner.start();
+  await runner.runTurn(makeObservation());
+  assert.equal(appendedRecords.length, 1);
+  assert.equal(appendedRecords[0].status, 'rejected', 'trajectory store must receive rejected status for a rejected outcome');
+  assert.equal(appendedRecords[0].httpStatusCategory, '4xx');
+  await fs.rm(dataDir, { recursive: true, force: true });
+});
+
 test('getRunnerHealth with no contract or credentials', () => {
   const runner = new ForgeRunner({
     dataDir: '/tmp',
