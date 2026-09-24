@@ -158,3 +158,21 @@ Next safe step: Issue #13 — terminal-run-only offline learning & DAgger-style 
 ## Backfill boundary
 
 This bootstrap captures retrievable ARE Agent Studio integration history. It is not a transcript. Older recovered blocks must be appended as `Historical recovery` entries rather than rewriting these records.
+
+### 2026-09-24 — ForgeAI 07 & 12: Offline learning, DAgger corrections & Forge Control Room UI
+Status: VERIFIED repository merge
+Task: Implement issues #13 (terminal-run-only offline learning & DAgger-style correction for structured trajectories) and #18 (Forge Control Room UI/readmodels with strict verified-vs-derived status semantics).
+Decisions:
+- New module `frontend/services/forgeLearningEligibility.ts` (schema `forge-learning.v1`, `forge-structured-correction.v1`, `forge-policy-revision-manifest.v1`):
+  - `checkLearningEligibility` — gates learning on trajectory validation, terminal immutability, reconciliation verdict threshold (VERIFIED/PARTIAL), rights/privacy, and no unresolved quarantine.
+  - `buildForgeCorrection` — append-only correction record referencing exact observation hash + original prediction/action. Original action never overwritten. `admitted_to_training` is separate from recording (requires owner approval).
+  - `splitEpisodes` — deterministic episode-level train/val/test splitting (never turn-level) with seeded hash assignment. Same seed + run IDs → identical split.
+  - `buildPolicyRevisionManifest` — binds dataset manifest hash, input run IDs/root hashes, code Git SHA, training seed, training config hash, environment digest, output artifact hash, evaluation manifest hash.
+- New component `frontend/components/ForgeControlRoom.tsx` — dedicated Forge/External Evaluation view with strict provenance labels (local observed, Forge observed, derived, verified, partial, unavailable). Unknown values render as "—", never zero. Controls: inspect/connect, start practice (gated), stop, quarantine/unquarantine with owner reason, private snapshot. No manual verification override, no autonomous paid entry, no public publish while rights gate unresolved.
+- `SystemMode.FORGE_CONTROL_ROOM` added to types, Navbar, and App.tsx (full-width layout, no DeviceCanvas).
+- Core test runner extended with 35 new assertions (learning eligibility, correction immutability, episode splitting, policy revision manifest). UI truth guards extended with 13 new assertions for ForgeControlRoom.
+Touched surfaces: frontend/services/forgeLearningEligibility.ts (new), frontend/components/ForgeControlRoom.tsx (new), frontend/types.ts, frontend/App.tsx, frontend/components/Navbar.tsx, frontend/scripts/run-core-tests.mjs, frontend/scripts/run-ui-truth-guards.mjs, Memory.md.
+Evidence: Frontend core regressions 93 assertions pass (35 new). UI truth guards 24 assertions pass (13 new). Forge truth guard passes. Truth scan passes. Typecheck passes. Vite build passes (2402 modules). Production entry 7 assertions pass. Backend 22 tests pass. Forge runner 16 tests pass.
+Learned: The learning eligibility gate must consume the reconciliation verdict, not the runner success flag — a runner that reports "terminal" without reconciliation is not learning-eligible. Episode-level splitting prevents leakage across the same dungeon trajectory that turn-level splitting would cause.
+Open: No real Forge runtime, backend readmodel endpoint, or terminal practice run exists. The Control Room UI renders all fields as unavailable until a real data source is connected. No real learning has been performed.
+Next safe step: Issue #14 — reproducible training/evaluation receipts & Hugging Face publication.
