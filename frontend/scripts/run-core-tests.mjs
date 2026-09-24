@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +15,8 @@ const sourceFiles = [
   'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts',
   'services/forgeStructuredPolicy.ts',
   'services/forgeContractClient.ts',
+  'services/forgeTrajectoryStore.ts',
+  'services/forgeReconciliation.ts',
 ];
 for (const sourceFile of sourceFiles) {
   const sourcePath = path.join(root, sourceFile);
@@ -31,6 +34,8 @@ const { canonicalJson, verifyDatasetReceipt, verifyOperationCorrectionReceipt } 
 const { buildOperationCorrectionDraft, validateOperationCorrectionDraft } = require(path.join(out, 'services/operationCorrectionCodec.js'));
 const { validateForgeTrajectoryDraft, buildForgeTrajectoryDraft, DeterministicSelectFirstPolicy, FORGE_TRAJECTORY_SCHEMA_VERSION } = require(path.join(out, 'services/forgeStructuredPolicy.js'));
 const { validateForgeContractDiscovery, buildForgeContract, verifyForgeContractIntegrity, ForgeCredentialVault, ForgeActionClient, FORGE_CONTRACT_SCHEMA_VERSION } = require(path.join(out, 'services/forgeContractClient.js'));
+const { ForgeTrajectoryStore, validateForgeTrajectoryRecord, FORGE_TRAJECTORY_LEDGER_SCHEMA_VERSION } = require(path.join(out, 'services/forgeTrajectoryStore.js'));
+const { validateForgeReconciliationInput, buildForgeReconciliationReceipt, verifyReconciliationIntegrity, computeReconciliationVerdict, FORGE_RECONCILIATION_SCHEMA_VERSION } = require(path.join(out, 'services/forgeReconciliation.js'));
 const nodeCrypto = require('node:crypto');
 const { GameArchetype, TouchEventType } = require(path.join(out, 'types.js'));
 
@@ -215,4 +220,142 @@ const resultScaffold = clientScaffold.submitAction(forgeEntry.predicted_action, 
 assert.equal(resultScaffold.outcome, 'unobservable', 'scaffolding action client must never fabricate acceptance');
 assert.equal(resultScaffold.submitted_action, null, 'scaffolding result must not carry a submitted action');
 
-console.log('frontend core regressions: 58 assertions passed');
+// --- ForgeAI append-only trajectory ledger, receipts & tamper detection (#10) ---
+
+const trajDir = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-traj-test-'));
+const trajStore = new ForgeTrajectoryStore({ dataDir: trajDir });
+
+const trajInput = {
+  runId: 'forge-run-001',
+  dungeonId: 'forge-dungeon-001',
+  turnIndex: 0,
+  contractSha256: 'a'.repeat(64),
+  skillMdSha256: 'b'.repeat(64),
+  observationRef: 'obs-001',
+  observationSha256: 'c'.repeat(64),
+  allowedActionsSha256: 'd'.repeat(64),
+  policyRevisionSha256: 'e'.repeat(64),
+  policyConfigSha256: 'f'.repeat(64),
+  decisionCandidateSha256: '1'.repeat(64),
+  submittedAction: 'select route A',
+  submittedActionSha256: '2'.repeat(64),
+  requestId: 'req-001',
+  httpStatusCategory: '2xx',
+  forgeResponseRef: 'forge-receipt-001',
+  forgeResponseSha256: '3'.repeat(64),
+  localTimestampEpoch: 3000,
+  forgeTimestampEpoch: 3001,
+  status: 'accepted',
+};
+assert.deepEqual(validateForgeTrajectoryRecord(trajInput), [], 'complete trajectory record input must validate');
+const trajReceipt = await trajStore.append(trajInput);
+assert.equal(trajReceipt.duplicate, false, 'first append must not be a duplicate');
+assert.match(trajReceipt.receipt_sha256, /^[a-f0-9]{64}$/, 'trajectory receipt hash must be a SHA-256 digest');
+
+const trajRecords = await trajStore.getRecords();
+assert.equal(trajRecords.length, 1, 'store must contain one record after first append');
+assert.equal(trajRecords[0].run_id, 'forge-run-001', 'record must preserve run ID');
+assert.equal(trajRecords[0].schema_version, FORGE_TRAJECTORY_LEDGER_SCHEMA_VERSION, 'record must use the forge trajectory ledger schema');
+assert.equal(trajRecords[0].previous_record_sha256, '0'.repeat(64), 'first record must have genesis previous hash');
+assert.equal(trajRecords[0].record_sha256, trajRecords[0].record_id, 'record_id must equal record_sha256');
+
+// Idempotent duplicate append
+const dupReceipt = await trajStore.append(trajInput);
+assert.equal(dupReceipt.duplicate, true, 'duplicate append must be detected by request_id');
+assert.equal(dupReceipt.record_id, trajReceipt.record_id, 'duplicate receipt must reference the original record');
+
+// Second record — hash chain
+const trajInput2 = { ...trajInput, turnIndex: 1, requestId: 'req-002', localTimestampEpoch: 3002 };
+const trajReceipt2 = await trajStore.append(trajInput2);
+assert.equal(trajReceipt2.duplicate, false, 'second append must not be a duplicate');
+const trajRecords2 = await trajStore.getRecords();
+assert.equal(trajRecords2.length, 2, 'store must contain two records after second append');
+assert.equal(trajRecords2[1].previous_record_sha256, trajRecords2[0].record_sha256, 'second record must chain to first record hash');
+
+// PENDING_RECONCILIATION for ambiguous network failure
+const pendingInput = { ...trajInput, turnIndex: 2, requestId: 'req-003', httpStatusCategory: 'network_error', status: 'pending_reconciliation' };
+const pendingReceipt = await trajStore.append(pendingInput);
+assert.equal(pendingReceipt.duplicate, false, 'pending reconciliation append must not be a duplicate');
+const pendingRecords = await trajStore.getRecordsByRun('forge-run-001');
+assert.equal(pendingRecords[2].status, 'pending_reconciliation', 'network error record must be pending reconciliation');
+
+// Credential redaction — validation rejects credential patterns
+assert.ok(validateForgeTrajectoryRecord({ ...trajInput, requestId: 'req-004', submittedAction: 'api_key=secret123' }).length > 0, 'submitted action with credential assignment must be rejected');
+
+// Tamper detection — modify a historical record and verify startup rejects
+const ledgerText = fs.readFileSync(path.join(trajDir, 'forge-trajectory.jsonl'), 'utf8');
+const trajLines = ledgerText.trim().split('\n');
+const tamperedRow = JSON.parse(trajLines[0]);
+tamperedRow.run_id = 'tampered-run';
+trajLines[0] = JSON.stringify(tamperedRow);
+fs.writeFileSync(path.join(trajDir, 'forge-trajectory.jsonl'), trajLines.join('\n') + '\n', 'utf8');
+const tamperedStore = new ForgeTrajectoryStore({ dataDir: trajDir });
+await assert.rejects(() => tamperedStore.init(), /hash mismatch|tamper|chain/, 'tampered ledger must be rejected on startup');
+
+// No effect on VLA dataset counters — trajectory store has its own schema
+const trajStats = await trajStore.stats();
+assert.equal(trajStats.schema_version, FORGE_TRAJECTORY_LEDGER_SCHEMA_VERSION, 'trajectory store must use its own schema, not the VLA schema');
+assert.equal(trajStats.record_count, 3, 'trajectory store must report its own record count independent of VLA counters');
+
+fs.rmSync(trajDir, { recursive: true, force: true });
+
+// --- ForgeAI terminal trajectory reconciliation against ForgeAI readback (#12) ---
+
+const reconInput = {
+  runId: 'forge-run-001',
+  localTrajectoryRootHash: 'a'.repeat(64),
+  forgeEndpointRefs: ['https://forge.ai/api/runs/forge-run-001'],
+  forgeResponseHashes: ['b'.repeat(64)],
+  comparedFields: [
+    { field: 'run_status', local_value: 'terminal', forge_value: 'terminal', match: true },
+    { field: 'turn_count', local_value: '3', forge_value: '3', match: true },
+    { field: 'score', local_value: null, forge_value: null, match: null },
+  ],
+  coverageStatement: 'Run status and turn count were independently observed and matched. Score was not exposed by the Forge endpoint.',
+  reconciliationCodeRevision: 'c'.repeat(64),
+  reconciledAtEpoch: 4000,
+};
+assert.deepEqual(validateForgeReconciliationInput(reconInput), [], 'complete reconciliation input must validate');
+const reconReceipt = await buildForgeReconciliationReceipt(reconInput);
+assert.equal(reconReceipt.schema_version, FORGE_RECONCILIATION_SCHEMA_VERSION, 'reconciliation must use the forge-reconciliation.v1 schema');
+assert.equal(reconReceipt.verdict, 'PARTIAL', 'mixed match/unobservable fields must yield PARTIAL verdict');
+assert.equal(reconReceipt.run_id, 'forge-run-001', 'reconciliation receipt must preserve run ID');
+assert.match(reconReceipt.receipt_sha256, /^[a-f0-9]{64}$/, 'reconciliation receipt hash must be a SHA-256 digest');
+assert.equal(reconReceipt.reconciliation_id, reconReceipt.receipt_sha256, 'reconciliation ID must equal receipt hash');
+assert.ok(await verifyReconciliationIntegrity(reconReceipt), 'untampered reconciliation receipt must verify its integrity');
+
+// VERIFIED verdict: all fields observed and matched
+const verifiedInput = { ...reconInput, comparedFields: [
+  { field: 'run_status', local_value: 'terminal', forge_value: 'terminal', match: true },
+  { field: 'turn_count', local_value: '3', forge_value: '3', match: true },
+], coverageStatement: 'All declared verification fields were independently observed and matched.' };
+const verifiedReceipt = await buildForgeReconciliationReceipt(verifiedInput);
+assert.equal(verifiedReceipt.verdict, 'VERIFIED', 'all fields matched must yield VERIFIED verdict');
+
+// MISMATCH verdict: at least one field observed and differs
+const mismatchInput = { ...reconInput, comparedFields: [
+  { field: 'run_status', local_value: 'terminal', forge_value: 'running', match: false },
+  { field: 'turn_count', local_value: '3', forge_value: '3', match: true },
+], coverageStatement: 'Run status mismatched: local terminal vs Forge running.' };
+const mismatchReceipt = await buildForgeReconciliationReceipt(mismatchInput);
+assert.equal(mismatchReceipt.verdict, 'MISMATCH', 'field mismatch must yield MISMATCH verdict');
+
+// UNOBSERVABLE verdict: all fields unobservable
+const unobservableInput = { ...reconInput, comparedFields: [
+  { field: 'score', local_value: null, forge_value: null, match: null },
+  { field: 'replay', local_value: null, forge_value: null, match: null },
+], coverageStatement: 'No fields were independently observable from the Forge endpoint.' };
+const unobservableReceipt = await buildForgeReconciliationReceipt(unobservableInput);
+assert.equal(unobservableReceipt.verdict, 'UNOBSERVABLE', 'all fields unobservable must yield UNOBSERVABLE verdict');
+
+// Tampered receipt must fail integrity check
+const tamperedRecon = { ...reconReceipt, verdict: 'VERIFIED' };
+assert.ok(!(await verifyReconciliationIntegrity(tamperedRecon)), 'tampered reconciliation receipt must fail integrity check');
+
+// computeReconciliationVerdict pure function
+assert.equal(computeReconciliationVerdict([{ field: 'a', local_value: '1', forge_value: '1', match: true }]), 'VERIFIED', 'all matched → VERIFIED');
+assert.equal(computeReconciliationVerdict([{ field: 'a', local_value: '1', forge_value: '2', match: false }]), 'MISMATCH', 'any mismatch → MISMATCH');
+assert.equal(computeReconciliationVerdict([{ field: 'a', local_value: null, forge_value: null, match: null }]), 'UNOBSERVABLE', 'all null → UNOBSERVABLE');
+assert.equal(computeReconciliationVerdict([]), 'UNPROVABLE', 'empty → UNPROVABLE');
+
+console.log('frontend core regressions: 93 assertions passed');

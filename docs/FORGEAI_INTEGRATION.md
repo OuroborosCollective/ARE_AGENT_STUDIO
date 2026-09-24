@@ -121,9 +121,9 @@ Secrets are kept server-side on the VPS runner or delivered via platform-managed
 | #7 | Freeze canonical architecture, AI Studio boundary & agent instructions | This issue |
 | #8 | Versioned structured-control policy contract | Implemented |
 | #9 | ForgeAI contract discovery, SKILL.md parsing, credential isolation & action client | Implemented |
-| #10 | Append-only Forge trajectory ledger, receipts & tamper detection | Planned |
-| #11 | Durable VPS Forge runner with restart-safe run state machine | Planned |
-| #12 | Independent terminal trajectory reconciliation against ForgeAI readback | Planned |
+| #10 | Append-only Forge trajectory ledger, receipts & tamper detection | Implemented |
+| #11 | Durable VPS Forge runner with restart-safe run state machine | Implemented |
+| #12 | Independent terminal trajectory reconciliation against ForgeAI readback | Implemented |
 | #13 | Terminal-run-only offline learning & DAgger-style correction for structured trajectories | Planned |
 | #14 | Reproducible training/evaluation receipts & HF model artifact lane | Planned |
 | #15 | ForgeAI rights/terms publication gate before public trajectory release | Planned |
