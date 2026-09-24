@@ -91,6 +91,22 @@ Next safe step: Keep provider output side-channel/advisory and bind any future t
 
 ---
 
+### 2026-09-24 — ForgeAI 01: Freeze canonical architecture, AI Studio boundary & agent instructions
+Status: VERIFIED repository merge
+Task: Create the durable architecture/specification layer that prevents future AI-assisted work from confusing code generation with canonical integration (Issue #7).
+Decisions:
+- GitHub main is the only canonical source branch; Google AI Studio is a development accelerator, not an authority.
+- Root AGENTS.md expanded with project boundaries, truth rules, test commands, Memory.md workflow, Forge-specific restrictions, canonical status vocabulary, and forbidden cross-project authority leakage.
+- docs/FORGEAI_INTEGRATION.md created as the durable design spec: visual vs structured control planes, Forge external authority, dedicated runner, append-only trajectory ledger, terminal-run-only learning, rights/publication gate, responsibility matrix, secret ownership, practice-vs-paid boundary, status vocabulary.
+- docs/ARCHITECTURE.md and docs/ROADMAP.md updated to link to FORGEAI_INTEGRATION.md.
+- scripts/forge_truth_guard.mjs added: static guard that fails if any forge-related file imports or mutates the protected visual policy/dataset path (neuralPolicyEngine, datasetCodec, serverSyncGateway, receiptVerifier) or references the are-agent-vla.v1 schema.
+- Guard wired into package.json `check` script and CI workflow.
+Touched surfaces: AGENTS.md, docs/FORGEAI_INTEGRATION.md, docs/ARCHITECTURE.md, docs/ROADMAP.md, scripts/forge_truth_guard.mjs, package.json, .github/workflows/ci.yml, Memory.md, docs/RELEASE_STATUS.md.
+Evidence: forge_truth_guard.mjs passes (no forge files exist yet — guard is preventive). truth_scan.mjs passes. Backend tests pass. Frontend core tests pass. No existing visual-path module was modified.
+Learned: A static import guard is the cheapest preventive boundary — it fails CI before forge code can touch the visual path, even before any forge code exists.
+Open: No real Forge runtime, public trajectory data, or verified Forge results exist. All Forge capabilities remain planned.
+Next safe step: Issue #8 — add versioned structured-control policy contract without touching are-agent-vla.v1.
+
 ## Backfill boundary
 
 This bootstrap captures retrievable ARE Agent Studio integration history. It is not a transcript. Older recovered blocks must be appended as `Historical recovery` entries rather than rewriting these records.

@@ -105,3 +105,22 @@ Never collapse these into one synthetic "agent score" without a defined derivati
 ## Privacy and rights
 
 Before a broad public dataset launch, add a review surface that can flag or redact notifications, account identifiers, chat, email, payment data, faces, and other sensitive overlays. Keep raw private evidence and publishable derivatives as separate artifacts with separate hashes.
+
+## ForgeAI integration (planned)
+
+A structured-control plane for ForgeAI agent participation is planned across issues #7–#20. The full design spec, responsibility matrix, and truth boundaries are in [`docs/FORGEAI_INTEGRATION.md`](./FORGEAI_INTEGRATION.md). Key lanes:
+
+- versioned structured-control policy contract (separate from `are-agent-vla.v1`);
+- ForgeAI contract discovery, SKILL.md parsing, credential isolation & action client;
+- append-only Forge trajectory ledger with hash-chain tamper detection;
+- durable VPS Forge runner with restart-safe run state machine;
+- independent terminal trajectory reconciliation against ForgeAI readback;
+- terminal-run-only offline learning & DAgger-style correction for structured trajectories;
+- reproducible training/evaluation receipts & Hugging Face model artifact lane;
+- rights/terms publication gate before public trajectory release;
+- separate Hugging Face Forge-trajectory dataset pipeline with immutable manifests;
+- Forge Control Room UI/readmodels with strict verified-vs-derived status semantics;
+- CI, contract-drift, security & exact-head release gates;
+- qualification run: first real Forge practice benchmark.
+
+No Forge runtime, public trajectory data, or verified Forge results exist yet. All items are **planned** until runtime evidence is produced.
