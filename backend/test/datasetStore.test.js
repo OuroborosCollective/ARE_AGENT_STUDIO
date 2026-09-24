@@ -85,6 +85,18 @@ test('store refuses a tampered existing ledger on startup', async () => {
   await assert.rejects(() => store.init(), /sample_id does not match/);
 });
 
+test('publication-approved counter tracks user-confirmed rows on append and reload', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'are-agent-dataset-'));
+  const store = new DatasetStore({ dataDir: dir });
+  const published = row({ publication: { allowed: true, basis: 'user_confirmed' }, client_metadata: { client_id: 'test-client', device_model: 'test', timestamp_epoch: 999, session_id: 'pub-session', sequence_index: 1 } });
+  await store.append([published]);
+  assert.equal((await store.publicStats()).publication_approved_samples, 1);
+
+  const reloaded = new DatasetStore({ dataDir: dir });
+  await reloaded.init();
+  assert.equal((await reloaded.publicStats()).publication_approved_samples, 1);
+});
+
 test('public publication requires an explicit user-confirmed basis', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'are-agent-dataset-'));
   const store = new DatasetStore({ dataDir: dir });
