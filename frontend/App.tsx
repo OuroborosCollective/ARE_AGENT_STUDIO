@@ -37,6 +37,7 @@ import { PlaystyleProfiler } from './components/PlaystyleProfiler';
 import { InteractiveTerminal } from './components/InteractiveTerminal';
 import { BenchmarkStudio } from './components/BenchmarkStudio';
 import { CodebaseExporter } from './components/CodebaseExporter';
+import { ForgeControlRoom } from './components/ForgeControlRoom';
 
 export default function App() {
   const [activeMode, setActiveMode] = useState<SystemMode>(SystemMode.OBSERVE_RECORD);
@@ -277,7 +278,7 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
           {/* Left Column: Real Phone Screen Canvas Receiver */}
-          {activeMode !== SystemMode.OPERATION_CORRECTION_LEARNING && <div className="lg:col-span-5 flex justify-center sticky top-24">
+          {activeMode !== SystemMode.OPERATION_CORRECTION_LEARNING && activeMode !== SystemMode.FORGE_CONTROL_ROOM && <div className="lg:col-span-5 flex justify-center sticky top-24">
             <DeviceCanvas
               onHumanTouch={handleHumanTouch}
               isAgentActive={isAgentRunning}
@@ -290,7 +291,7 @@ export default function App() {
           </div>}
 
           {/* Right Column: Mode-Specific Workspace Module */}
-          <div className={activeMode === SystemMode.OPERATION_CORRECTION_LEARNING ? 'lg:col-span-12' : 'lg:col-span-7'}>
+          <div className={activeMode === SystemMode.OPERATION_CORRECTION_LEARNING || activeMode === SystemMode.FORGE_CONTROL_ROOM ? 'lg:col-span-12' : 'lg:col-span-7'}>
             {activeMode === SystemMode.OBSERVE_RECORD && (
               <ObservationRecorder
                 isRecording={isRecording}
@@ -396,6 +397,10 @@ export default function App() {
 
             {activeMode === SystemMode.CODEBASE_EXPORT && (
               <CodebaseExporter />
+            )}
+
+            {activeMode === SystemMode.FORGE_CONTROL_ROOM && (
+              <ForgeControlRoom />
             )}
           </div>
 

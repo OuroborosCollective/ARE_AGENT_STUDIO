@@ -17,6 +17,7 @@ const sourceFiles = [
   'services/forgeContractClient.ts',
   'services/forgeTrajectoryStore.ts',
   'services/forgeReconciliation.ts',
+  'services/forgeLearningEligibility.ts',
 ];
 for (const sourceFile of sourceFiles) {
   const sourcePath = path.join(root, sourceFile);
@@ -36,6 +37,7 @@ const { validateForgeTrajectoryDraft, buildForgeTrajectoryDraft, DeterministicSe
 const { validateForgeContractDiscovery, buildForgeContract, verifyForgeContractIntegrity, ForgeCredentialVault, ForgeActionClient, FORGE_CONTRACT_SCHEMA_VERSION } = require(path.join(out, 'services/forgeContractClient.js'));
 const { ForgeTrajectoryStore, validateForgeTrajectoryRecord, FORGE_TRAJECTORY_LEDGER_SCHEMA_VERSION } = require(path.join(out, 'services/forgeTrajectoryStore.js'));
 const { validateForgeReconciliationInput, buildForgeReconciliationReceipt, verifyReconciliationIntegrity, computeReconciliationVerdict, FORGE_RECONCILIATION_SCHEMA_VERSION } = require(path.join(out, 'services/forgeReconciliation.js'));
+const { checkLearningEligibility, LEARNING_RECONCILIATION_THRESHOLD, buildForgeCorrection, validateForgeCorrectionInput, verifyCorrectionIntegrity, splitEpisodes, buildPolicyRevisionManifest, validatePolicyRevisionManifestInput, verifyPolicyRevisionManifestIntegrity, FORGE_LEARNING_SCHEMA_VERSION, FORGE_CORRECTION_SCHEMA_VERSION, FORGE_POLICY_MANIFEST_SCHEMA_VERSION } = require(path.join(out, 'services/forgeLearningEligibility.js'));
 const nodeCrypto = require('node:crypto');
 const { GameArchetype, TouchEventType } = require(path.join(out, 'types.js'));
 
@@ -357,5 +359,154 @@ assert.equal(computeReconciliationVerdict([{ field: 'a', local_value: '1', forge
 assert.equal(computeReconciliationVerdict([{ field: 'a', local_value: '1', forge_value: '2', match: false }]), 'MISMATCH', 'any mismatch → MISMATCH');
 assert.equal(computeReconciliationVerdict([{ field: 'a', local_value: null, forge_value: null, match: null }]), 'UNOBSERVABLE', 'all null → UNOBSERVABLE');
 assert.equal(computeReconciliationVerdict([]), 'UNPROVABLE', 'empty → UNPROVABLE');
+
+// --- ForgeAI terminal-run-only offline learning & DAgger-style corrections (#13) ---
+
+// Learning eligibility: all conditions met → eligible
+const eligibleInput = {
+  runId: 'forge-run-001',
+  trajectoryValidates: true,
+  terminalStatusImmutable: true,
+  reconciliationVerdict: 'VERIFIED',
+  rightsAllowsTraining: true,
+  hasUnresolvedQuarantine: false,
+};
+const eligibleResult = checkLearningEligibility(eligibleInput, 5000);
+assert.equal(eligibleResult.eligible, true, 'all conditions met must yield eligible');
+assert.equal(eligibleResult.reasons.length, 0, 'eligible run must have no reasons');
+assert.equal(eligibleResult.run_id, 'forge-run-001', 'eligibility result must preserve run ID');
+
+// Learning eligibility: quarantine blocks learning
+const quarantinedResult = checkLearningEligibility({ ...eligibleInput, hasUnresolvedQuarantine: true }, 5001);
+assert.equal(quarantinedResult.eligible, false, 'unresolved quarantine must block learning');
+assert.ok(quarantinedResult.reasons.some((r) => r.includes('quarantine')), 'must report quarantine as blocking reason');
+
+// Learning eligibility: MISMATCH verdict blocks learning (below threshold)
+const mismatchEligibility = checkLearningEligibility({ ...eligibleInput, reconciliationVerdict: 'MISMATCH' }, 5002);
+assert.equal(mismatchEligibility.eligible, false, 'MISMATCH verdict must block learning');
+assert.ok(mismatchEligibility.reasons.some((r) => r.includes('MISMATCH')), 'must report verdict below threshold');
+
+// Learning eligibility: UNOBSERVABLE verdict blocks learning
+const unobservableEligibility = checkLearningEligibility({ ...eligibleInput, reconciliationVerdict: 'UNOBSERVABLE' }, 5003);
+assert.equal(unobservableEligibility.eligible, false, 'UNOBSERVABLE verdict must block learning');
+
+// Learning eligibility: PARTIAL verdict allows learning (meets threshold)
+const partialEligibility = checkLearningEligibility({ ...eligibleInput, reconciliationVerdict: 'PARTIAL' }, 5004);
+assert.equal(partialEligibility.eligible, true, 'PARTIAL verdict must allow learning (meets threshold)');
+
+// Learning eligibility: non-immutable terminal status blocks learning
+const nonTerminalResult = checkLearningEligibility({ ...eligibleInput, terminalStatusImmutable: false }, 5005);
+assert.equal(nonTerminalResult.eligible, false, 'non-immutable terminal status must block learning');
+
+// Learning eligibility: rights denied blocks learning
+const rightsDenied = checkLearningEligibility({ ...eligibleInput, rightsAllowsTraining: false }, 5006);
+assert.equal(rightsDenied.eligible, false, 'rights denied must block learning');
+
+// Learning eligibility: trajectory validation failure blocks learning
+const invalidTrajectory = checkLearningEligibility({ ...eligibleInput, trajectoryValidates: false }, 5007);
+assert.equal(invalidTrajectory.eligible, false, 'trajectory validation failure must block learning');
+
+// Threshold set is correct
+assert.ok(LEARNING_RECONCILIATION_THRESHOLD.has('VERIFIED'), 'threshold must include VERIFIED');
+assert.ok(LEARNING_RECONCILIATION_THRESHOLD.has('PARTIAL'), 'threshold must include PARTIAL');
+assert.ok(!LEARNING_RECONCILIATION_THRESHOLD.has('MISMATCH'), 'threshold must not include MISMATCH');
+assert.ok(!LEARNING_RECONCILIATION_THRESHOLD.has('UNOBSERVABLE'), 'threshold must not include UNOBSERVABLE');
+assert.ok(!LEARNING_RECONCILIATION_THRESHOLD.has('UNPROVABLE'), 'threshold must not include UNPROVABLE');
+
+// Forge structured correction: append-only, references original, never overwrites
+const correctionInput = {
+  runId: 'forge-run-001',
+  turnIndex: 5,
+  observationSha256: 'a'.repeat(64),
+  originalPredictionSha256: 'b'.repeat(64),
+  originalActionSha256: 'c'.repeat(64),
+  correctedActionSummary: 'Select route B instead of route A.',
+  correctedActionSha256: 'd'.repeat(64),
+  correctionRationale: 'Route A leads to a dead end; route B is safer.',
+  ownerApprovedAdmission: false,
+  createdAtEpoch: 6000,
+};
+assert.deepEqual(validateForgeCorrectionInput(correctionInput), [], 'complete correction input must validate');
+const correction = await buildForgeCorrection(correctionInput);
+assert.equal(correction.schema_version, FORGE_CORRECTION_SCHEMA_VERSION, 'correction must use the forge-structured-correction.v1 schema');
+assert.equal(correction.run_id, 'forge-run-001', 'correction must preserve run ID');
+assert.equal(correction.turn_index, 5, 'correction must preserve turn index');
+assert.equal(correction.observation_sha256, 'a'.repeat(64), 'correction must reference the exact observation hash');
+assert.equal(correction.original_prediction_sha256, 'b'.repeat(64), 'correction must reference the original prediction hash');
+assert.equal(correction.original_action_sha256, 'c'.repeat(64), 'correction must reference the original action hash');
+assert.equal(correction.admitted_to_training, false, 'correction must default to not admitted without owner approval');
+assert.match(correction.correction_sha256, /^[a-f0-9]{64}$/, 'correction hash must be a SHA-256 digest');
+assert.equal(correction.correction_id, correction.correction_sha256, 'correction ID must equal correction hash');
+assert.ok(await verifyCorrectionIntegrity(correction), 'untampered correction must verify its integrity');
+
+// Correction with owner approval → admitted to training
+const approvedCorrection = await buildForgeCorrection({ ...correctionInput, ownerApprovedAdmission: true });
+assert.equal(approvedCorrection.admitted_to_training, true, 'owner-approved correction must be admitted to training');
+
+// Tampered correction must fail integrity
+const tamperedCorrection = { ...correction, correction_rationale: 'tampered' };
+assert.ok(!(await verifyCorrectionIntegrity(tamperedCorrection)), 'tampered correction must fail integrity check');
+
+// Invalid correction input must fail validation
+assert.ok(validateForgeCorrectionInput({ ...correctionInput, observationSha256: 'not-a-hash' }).length > 0, 'invalid observation hash must be rejected');
+assert.ok(validateForgeCorrectionInput({ ...correctionInput, correctedActionSummary: '' }).length > 0, 'empty corrected action summary must be rejected');
+
+// Episode splitting: deterministic, at episode level, never turn level
+const runIds = ['run-a', 'run-b', 'run-c', 'run-d', 'run-e', 'run-f', 'run-g', 'run-h', 'run-i', 'run-j'];
+const split1 = splitEpisodes(runIds, { train: 0.7, validation: 0.15, test: 0.15 }, 'abc123');
+const split2 = splitEpisodes(runIds, { train: 0.7, validation: 0.15, test: 0.15 }, 'abc123');
+assert.deepEqual(split1.train, split2.train, 'same seed must produce identical train split');
+assert.deepEqual(split1.validation, split2.validation, 'same seed must produce identical validation split');
+assert.deepEqual(split1.test, split2.test, 'same seed must produce identical test split');
+// All runs are accounted for
+const allSplit = [...split1.train, ...split1.validation, ...split1.test].sort();
+assert.deepEqual(allSplit, [...runIds].sort(), 'all run IDs must be assigned to exactly one split set');
+// No run appears in multiple sets
+const trainSet = new Set(split1.train);
+const valSet = new Set(split1.validation);
+const testSet = new Set(split1.test);
+for (const id of split1.train) assert.ok(!valSet.has(id) && !testSet.has(id), 'no run may appear in multiple split sets');
+for (const id of split1.validation) assert.ok(!trainSet.has(id) && !testSet.has(id), 'no run may appear in multiple split sets');
+
+// Different seed produces different split
+const split3 = splitEpisodes(runIds, { train: 0.7, validation: 0.15, test: 0.15 }, 'def456');
+assert.notDeepEqual(split1.train, split3.train, 'different seed must produce different split');
+
+// Invalid ratios must throw
+assert.throws(() => splitEpisodes(runIds, { train: 0.5, validation: 0.5, test: 0.5 }, 'abc123'), /sum to 1.0/, 'ratios not summing to 1.0 must throw');
+
+// Policy revision manifest: binds all required metadata
+const manifestInput = {
+  policyRevisionId: 'policy-rev-001',
+  trainingDatasetManifestSha256: 'a'.repeat(64),
+  inputRunIds: ['forge-run-001', 'forge-run-002'],
+  inputRunRootHashes: ['b'.repeat(64), 'c'.repeat(64)],
+  codeGitSha: 'd'.repeat(64),
+  trainingSeed: 'a1b2c3d4e5f6',
+  trainingConfigSha256: 'e'.repeat(64),
+  environmentDigest: 'f'.repeat(64),
+  outputArtifactSha256: '1'.repeat(64),
+  evaluationManifestSha256: '2'.repeat(64),
+  createdAtEpoch: 7000,
+};
+assert.deepEqual(validatePolicyRevisionManifestInput(manifestInput), [], 'complete manifest input must validate');
+const manifest = await buildPolicyRevisionManifest(manifestInput);
+assert.equal(manifest.schema_version, FORGE_POLICY_MANIFEST_SCHEMA_VERSION, 'manifest must use the forge-policy-revision-manifest.v1 schema');
+assert.equal(manifest.policy_revision_id, 'policy-rev-001', 'manifest must preserve policy revision ID');
+assert.deepEqual(manifest.input_run_ids, ['forge-run-001', 'forge-run-002'], 'manifest must preserve input run IDs');
+assert.deepEqual(manifest.input_run_root_hashes, ['b'.repeat(64), 'c'.repeat(64)], 'manifest must preserve input run root hashes');
+assert.equal(manifest.code_git_sha, 'd'.repeat(64), 'manifest must preserve code Git SHA');
+assert.equal(manifest.training_seed, 'a1b2c3d4e5f6', 'manifest must preserve training seed');
+assert.match(manifest.manifest_sha256, /^[a-f0-9]{64}$/, 'manifest hash must be a SHA-256 digest');
+assert.ok(await verifyPolicyRevisionManifestIntegrity(manifest), 'untampered manifest must verify its integrity');
+
+// Tampered manifest must fail integrity
+const tamperedManifest = { ...manifest, training_seed: 'tampered' };
+assert.ok(!(await verifyPolicyRevisionManifestIntegrity(tamperedManifest)), 'tampered manifest must fail integrity check');
+
+// Invalid manifest input must fail validation
+assert.ok(validatePolicyRevisionManifestInput({ ...manifestInput, codeGitSha: 'not-a-hash' }).length > 0, 'invalid code Git SHA must be rejected');
+assert.ok(validatePolicyRevisionManifestInput({ ...manifestInput, inputRunIds: [] }).length > 0, 'empty input run IDs must be rejected');
+assert.ok(validatePolicyRevisionManifestInput({ ...manifestInput, inputRunRootHashes: ['x'.repeat(64)] }).length > 0, 'mismatched root hash count must be rejected');
 
 console.log('frontend core regressions: 93 assertions passed');

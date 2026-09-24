@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const operationStudio = fs.readFileSync(path.join(root, 'components', 'OperationCorrectionStudio.tsx'), 'utf8');
+const forgeControlRoom = fs.readFileSync(path.join(root, 'components', 'ForgeControlRoom.tsx'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'App.tsx'), 'utf8');
 const shell = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const entry = fs.readFileSync(path.join(root, 'index.tsx'), 'utf8');
@@ -23,4 +24,19 @@ assert.match(entry, /StudioStartupBoundary/, 'a React render failure must be con
 assert.match(entry, /rootElement\.dataset\.areMounted = 'true'/, 'the static shell must be marked mounted only after React takes control');
 assert.match(packageJson, /inline-production-entry\.mjs/, 'the production build must inline its self-contained client entry');
 
-console.log('frontend UI truth guards: 11 assertions passed');
+// Forge Control Room truth guards (issue #18)
+assert.match(forgeControlRoom, /unavailable/, 'Forge Control Room must render unavailable as an explicit provenance label');
+assert.match(forgeControlRoom, /—/, 'Forge Control Room must render unknown values as em-dash, never zero');
+assert.doesNotMatch(forgeControlRoom, /mark.?verified|markVerified/i, 'Forge Control Room must not have a manual mark-verified button');
+assert.doesNotMatch(forgeControlRoom, /paid.*autonomous|autonomous.*paid/i, 'Forge Control Room must not support autonomous paid run entry');
+assert.match(forgeControlRoom, /local.observed|local_observed/, 'Forge Control Room must use local-observed provenance labels');
+assert.match(forgeControlRoom, /forge.observed|forge_observed/, 'Forge Control Room must use Forge-observed provenance labels');
+assert.match(forgeControlRoom, /verified/, 'Forge Control Room must use verified provenance labels');
+assert.match(forgeControlRoom, /partial/, 'Forge Control Room must use partial provenance labels');
+assert.match(forgeControlRoom, /derived/, 'Forge Control Room must use derived provenance labels');
+assert.match(forgeControlRoom, /Practice/, 'Forge Control Room must gate practice mode explicitly');
+assert.match(forgeControlRoom, /quarantine/i, 'Forge Control Room must support quarantine with owner reason');
+assert.match(forgeControlRoom, /rights.*gate|rights.*unresolved/i, 'Forge Control Room must block public publish while rights gate is unresolved');
+assert.match(app, /FORGE_CONTROL_ROOM/, 'App.tsx must integrate the Forge Control Room mode');
+
+console.log('frontend UI truth guards: 24 assertions passed');

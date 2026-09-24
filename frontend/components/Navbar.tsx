@@ -225,6 +225,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               <FileCode2 className="w-3.5 h-3.5" />
               <span>Code</span>
             </button>
+
+            <button
+              onClick={() => onSelectMode(SystemMode.FORGE_CONTROL_ROOM)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                activeMode === SystemMode.FORGE_CONTROL_ROOM
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>Forge</span>
+            </button>
           </nav>
 
           {/* Right Action: Game Archetype & Emergency Killswitch */}
