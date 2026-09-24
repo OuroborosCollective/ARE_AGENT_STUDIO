@@ -140,6 +140,21 @@ Learned: The credential vault pattern (observable presence, hidden value) is the
 Open: No real Forge runtime, endpoint, or credentials exist yet. The action client is scaffolding only.
 Next safe step: Issue #10 — append-only Forge trajectory ledger, receipts & tamper detection.
 
+### 2026-09-24 — ForgeAI 04-06: Trajectory ledger, VPS runner & reconciliation
+Status: VERIFIED repository merge
+Task: Implement issues #10 (append-only Forge trajectory ledger, receipts & tamper detection), #11 (durable VPS Forge runner with restart-safe run state machine), and #12 (independent terminal trajectory reconciliation against ForgeAI readback).
+Decisions:
+- New schema `are-agent-forge-trajectory.v1` in `frontend/services/forgeTrajectoryStore.ts` — append-only JSONL ledger with SHA-256 hash chain, idempotent duplicate handling (request_id), startup revalidation, tamper refusal, receipt generation, and PENDING_RECONCILIATION state for ambiguous network failure. Self-contained, no imports from protected visual-path modules.
+- New `forge-runner/` top-level runtime with `stateMachine.js` (IDLE → PREPARED → RUNNING → TERMINAL_LOCAL → RECONCILING → RECONCILED/PARTIAL/QUARANTINED → LEARNING_ELIGIBLE), `runner.js` (durable run lifecycle, crash/restart safety, practice-mode payment boundary), `health.js` (process/contract/credential/ledger/reconciliation health readback), `Dockerfile`, and 16 tests.
+- New schema `are-agent-forge-reconciliation.v1` in `frontend/services/forgeReconciliation.ts` — field-by-field comparison of local trajectory vs Forge readback, verdict computation (VERIFIED/PARTIAL/MISMATCH/UNOBSERVABLE/UNPROVABLE), coverage statement, receipt integrity verification.
+- CI workflow updated with forge-runner test step. Root check script updated to include forge-runner tests.
+- `docs/FORGEAI_INTEGRATION.md` issue map updated: #10, #11, #12 → Implemented.
+Touched surfaces: frontend/services/forgeTrajectoryStore.ts (new), frontend/services/forgeReconciliation.ts (new), forge-runner/ (new: stateMachine.js, runner.js, health.js, package.json, Dockerfile, test/runner.test.js), frontend/scripts/run-core-tests.mjs, docs/FORGEAI_INTEGRATION.md, .github/workflows/ci.yml, package.json, Memory.md.
+Evidence: Frontend core regressions 93 assertions pass (35 new: 20 trajectory ledger + 15 reconciliation). Forge runner 16 tests pass. Forge truth guard passes (no forge file imports protected modules or references frozen schema). Truth scan passes. Backend 22 tests pass. Typecheck passes. Vite build passes (2401 modules). HF dataset 5 tests pass.
+Learned: The hash chain pattern (previous_record_sha256 → record_sha256) provides cheap tamper detection at startup — a single field change in any historical record breaks the chain and the recomputed hash. The reconciliation verdict must distinguish "field was unobservable" (match=null) from "field was observed and matched" (match=true) — conflating them would let a missing endpoint pass as VERIFIED.
+Open: No real Forge runtime, endpoint, credentials, or terminal practice run exists. All modules are scaffolding with contract tests only. Real VPS deployment and Forge readback are out of scope for this issue set.
+Next safe step: Issue #13 — terminal-run-only offline learning & DAgger-style correction for structured trajectories.
+
 ## Backfill boundary
 
 This bootstrap captures retrievable ARE Agent Studio integration history. It is not a transcript. Older recovered blocks must be appended as `Historical recovery` entries rather than rewriting these records.

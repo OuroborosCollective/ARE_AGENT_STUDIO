@@ -49,5 +49,7 @@ jobs:
         run: node scripts/truth_scan.mjs
       - name: Forge architecture guard
         run: node scripts/forge_truth_guard.mjs
+      - name: Forge runner tests
+        run: cd forge-runner && node --test
       - name: Hugging Face Space packaging preflight
         run: python scripts/publish_hf_space.py --repo-id local/ci-preflight --dry-run
