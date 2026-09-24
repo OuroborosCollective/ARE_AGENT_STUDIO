@@ -111,8 +111,10 @@ Secrets are kept server-side on the VPS runner or delivered via platform-managed
 ## Verification gates
 
 - `scripts/forge_truth_guard.mjs` — static guard: fails if forge-related files import or mutate the visual policy/dataset path.
+- `scripts/forge_secret_scan.mjs` — security gate: scans forge files and build output for credential/secret patterns.
+- `scripts/forge_contract_drift_guard.mjs` — contract-drift gate: verifies expected schema versions and exports exist in their modules.
 - `scripts/truth_scan.mjs` — existing guard: fails if prototype evidence fallbacks appear in production paths.
-- Full CI (`.github/workflows/ci.yml`) runs backend tests, frontend tests, typecheck, build, truth scan, forge guard, HF tests, and Docker packaging.
+- Full CI (`.github/workflows/ci.yml`) runs backend tests, frontend tests, typecheck, build, truth scan, forge guard, forge secret scan, contract-drift guard, forge runner tests, forge dataset tests, HF tests, and Docker packaging.
 
 ## Implementation issue map
 
@@ -124,11 +126,11 @@ Secrets are kept server-side on the VPS runner or delivered via platform-managed
 | #10 | Append-only Forge trajectory ledger, receipts & tamper detection | Implemented |
 | #11 | Durable VPS Forge runner with restart-safe run state machine | Implemented |
 | #12 | Independent terminal trajectory reconciliation against ForgeAI readback | Implemented |
-| #13 | Terminal-run-only offline learning & DAgger-style correction for structured trajectories | Planned |
-| #14 | Reproducible training/evaluation receipts & HF model artifact lane | Planned |
-| #15 | ForgeAI rights/terms publication gate before public trajectory release | Planned |
-| #16 | Separate HF Forge-trajectory dataset pipeline with immutable manifests | Planned |
-| #17 | Google AI Studio + Firebase/Firestore/Cloud SQL as optional support planes | Planned |
+| #13 | Terminal-run-only offline learning & DAgger-style correction for structured trajectories | Implemented |
+| #14 | Reproducible training/evaluation receipts & HF model artifact lane | Implemented |
+| #15 | ForgeAI rights/terms publication gate before public trajectory release | Implemented |
+| #16 | Separate HF Forge-trajectory dataset pipeline with immutable manifests | Implemented |
+| #17 | Google AI Studio + Firebase/Firestore/Cloud SQL as optional support planes | Implemented (docs/GOOGLE_SUPPORT_PLANES.md) |
 | #18 | Forge Control Room UI/readmodels with strict verified-vs-derived status semantics | Planned |
-| #19 | CI, contract-drift, security & exact-head release gates for Forge integration | Planned |
-| #20 | Qualification run: first real Forge practice benchmark | Planned |
+| #19 | CI, contract-drift, security & exact-head release gates for Forge integration | Implemented |
+| #20 | Qualification run: first real Forge practice benchmark | Blocked (no practice run available) |
