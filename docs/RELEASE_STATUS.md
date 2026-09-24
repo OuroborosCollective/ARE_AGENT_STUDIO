@@ -28,6 +28,15 @@ The current execution environment cannot reach the npm registry through `npm ins
 
 CI is configured to perform the real dependency install, TypeScript check, frontend build, backend tests, HF tests, and truth scan on GitHub.
 
+## ForgeAI integration (planned, not yet implemented)
+
+- No Forge runtime, Forge runner, or Forge trajectory ledger exists.
+- No structured-control policy contract has been implemented.
+- No ForgeAI contract discovery, SKILL.md parsing, or action client exists.
+- No public Forge trajectory dataset or model artifact exists.
+- No verified Forge practice or paid run has been executed.
+- The design spec is in `docs/FORGEAI_INTEGRATION.md`. All items are planned until runtime evidence is produced.
+
 ## Not yet verified / intentionally not claimed
 
 - physical Android ADB execution on a real device;

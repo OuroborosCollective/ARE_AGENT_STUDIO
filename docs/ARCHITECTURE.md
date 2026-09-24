@@ -114,3 +114,7 @@ policy prediction ≠ device-readback reproduction
 ```
 
 These inequalities are product contracts, not documentation niceties.
+
+## ForgeAI integration plane (planned)
+
+A separate structured-control plane for ForgeAI agent participation is planned. It uses a new schema (never `are-agent-vla.v1`), a dedicated non-public runner, an append-only trajectory ledger, and terminal-run-only learning. The full design spec is in [`docs/FORGEAI_INTEGRATION.md`](./FORGEAI_INTEGRATION.md). A static guard (`scripts/forge_truth_guard.mjs`) enforces that forge-related code never imports or mutates the protected visual policy/dataset path.
