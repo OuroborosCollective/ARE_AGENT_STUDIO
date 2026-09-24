@@ -51,5 +51,13 @@ jobs:
         run: node scripts/forge_truth_guard.mjs
       - name: Forge runner tests
         run: cd forge-runner && node --test
+      - name: Forge dataset pipeline regressions
+        run: python scripts/test_hf_forge_dataset.py
+      - name: Forge dataset dry-run packaging
+        run: python scripts/prepare_hf_forge_dataset.py --ledger /dev/null --output /tmp/forge-dry-run || true
+      - name: Secret and credential scan
+        run: node scripts/forge_secret_scan.mjs
+      - name: Contract-drift guard
+        run: node scripts/forge_contract_drift_guard.mjs
       - name: Hugging Face Space packaging preflight
         run: python scripts/publish_hf_space.py --repo-id local/ci-preflight --dry-run

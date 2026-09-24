@@ -18,6 +18,8 @@ const sourceFiles = [
   'services/forgeTrajectoryStore.ts',
   'services/forgeReconciliation.ts',
   'services/forgeLearningEligibility.ts',
+  'services/forgeTrainingReceipt.ts',
+  'services/forgeRightsGate.ts',
 ];
 for (const sourceFile of sourceFiles) {
   const sourcePath = path.join(root, sourceFile);
@@ -38,6 +40,8 @@ const { validateForgeContractDiscovery, buildForgeContract, verifyForgeContractI
 const { ForgeTrajectoryStore, validateForgeTrajectoryRecord, FORGE_TRAJECTORY_LEDGER_SCHEMA_VERSION } = require(path.join(out, 'services/forgeTrajectoryStore.js'));
 const { validateForgeReconciliationInput, buildForgeReconciliationReceipt, verifyReconciliationIntegrity, computeReconciliationVerdict, FORGE_RECONCILIATION_SCHEMA_VERSION } = require(path.join(out, 'services/forgeReconciliation.js'));
 const { checkLearningEligibility, LEARNING_RECONCILIATION_THRESHOLD, buildForgeCorrection, validateForgeCorrectionInput, verifyCorrectionIntegrity, splitEpisodes, buildPolicyRevisionManifest, validatePolicyRevisionManifestInput, verifyPolicyRevisionManifestIntegrity, FORGE_LEARNING_SCHEMA_VERSION, FORGE_CORRECTION_SCHEMA_VERSION, FORGE_POLICY_MANIFEST_SCHEMA_VERSION } = require(path.join(out, 'services/forgeLearningEligibility.js'));
+const { buildTrainingReceipt, validateTrainingReceiptInput, verifyTrainingReceiptIntegrity, buildEvaluationReceipt, validateEvaluationReceiptInput, verifyEvaluationReceiptIntegrity, buildForgeModelCard, validateModelCardInput, verifyModelCardIntegrity, FORGE_TRAINING_RECEIPT_SCHEMA_VERSION, FORGE_EVALUATION_RECEIPT_SCHEMA_VERSION, FORGE_MODEL_CARD_SCHEMA_VERSION } = require(path.join(out, 'services/forgeTrainingReceipt.js'));
+const { buildForgeRightsRecord, validateRightsRecordInput, verifyRightsRecordIntegrity, classifyFieldsForPublication, assertPublicationAllowed, ALL_RIGHTS_CATEGORIES, FORGE_RIGHTS_RECORD_SCHEMA_VERSION } = require(path.join(out, 'services/forgeRightsGate.js'));
 const nodeCrypto = require('node:crypto');
 const { GameArchetype, TouchEventType } = require(path.join(out, 'types.js'));
 
@@ -509,4 +513,163 @@ assert.ok(validatePolicyRevisionManifestInput({ ...manifestInput, codeGitSha: 'n
 assert.ok(validatePolicyRevisionManifestInput({ ...manifestInput, inputRunIds: [] }).length > 0, 'empty input run IDs must be rejected');
 assert.ok(validatePolicyRevisionManifestInput({ ...manifestInput, inputRunRootHashes: ['x'.repeat(64)] }).length > 0, 'mismatched root hash count must be rejected');
 
-console.log('frontend core regressions: 93 assertions passed');
+// --- ForgeAI reproducible training/evaluation receipts & HF model lane (#14) ---
+
+// Training receipt: complete input validates and builds
+const trainingReceiptInput = {
+  trainingDatasetManifestSha256: 'a'.repeat(64),
+  selectedEpisodeIds: ['forge-run-001', 'forge-run-002'],
+  selectedEpisodeRootHashes: ['b'.repeat(64), 'c'.repeat(64)],
+  codeGitSha: 'd'.repeat(64),
+  dependencyLockHash: 'e'.repeat(64),
+  containerRuntimeDigest: 'f'.repeat(64),
+  deterministicSeeds: ['a1b2c3d4', 'e5f6a7b8'],
+  trainingConfigSha256: '1'.repeat(64),
+  startEpoch: 10000,
+  endEpoch: 11000,
+  outputArtifactHashes: ['2'.repeat(64)],
+  evaluationManifestSha256: '3'.repeat(64),
+  toolProviderIdentifiers: ['huggingface', 'pytorch'],
+  nondeterminismNotes: 'Remote LLM provider calls may introduce nondeterminism.',
+  createdAtEpoch: 12000,
+};
+assert.deepEqual(validateTrainingReceiptInput(trainingReceiptInput), [], 'complete training receipt input must validate');
+const trainingReceipt = await buildTrainingReceipt(trainingReceiptInput);
+assert.equal(trainingReceipt.schema_version, FORGE_TRAINING_RECEIPT_SCHEMA_VERSION, 'training receipt must use forge-training-receipt.v1 schema');
+assert.equal(trainingReceipt.selected_episode_ids.length, 2, 'training receipt must preserve selected episode IDs');
+assert.equal(trainingReceipt.output_artifact_hashes.length, 1, 'training receipt must preserve output artifact hashes');
+assert.match(trainingReceipt.receipt_sha256, /^[a-f0-9]{64}$/, 'training receipt hash must be a SHA-256 digest');
+assert.ok(await verifyTrainingReceiptIntegrity(trainingReceipt), 'untampered training receipt must verify integrity');
+
+// Tampered training receipt must fail
+const tamperedTrainingReceipt = { ...trainingReceipt, nondeterminism_notes: 'tampered' };
+assert.ok(!(await verifyTrainingReceiptIntegrity(tamperedTrainingReceipt)), 'tampered training receipt must fail integrity');
+
+// Invalid training receipt input
+assert.ok(validateTrainingReceiptInput({ ...trainingReceiptInput, codeGitSha: 'not-a-hash' }).length > 0, 'invalid code Git SHA must be rejected');
+assert.ok(validateTrainingReceiptInput({ ...trainingReceiptInput, deterministicSeeds: [] }).length > 0, 'empty seeds must be rejected');
+assert.ok(validateTrainingReceiptInput({ ...trainingReceiptInput, outputArtifactHashes: [] }).length > 0, 'empty output artifacts must be rejected');
+
+// Evaluation receipt: complete input validates and builds
+const evalReceiptInput = {
+  evaluationPackId: 'eval-pack-001',
+  datasetManifestSha256: 'a'.repeat(64),
+  policyRevisionId: 'policy-rev-001',
+  metrics: [
+    { metric_name: 'invalid_action_rate', value: 0.05, description: '5% of actions were invalid.', is_external: false },
+    { metric_name: 'terminal_completion', value: 0.8, description: '80% of episodes reached terminal state.', is_external: false },
+    { metric_name: 'external_forge_score', value: 42, description: 'Average Forge-reported score.', is_external: true },
+    { metric_name: 'correction_rate', value: 0.1, description: '10% of turns had corrections.', is_external: false },
+  ],
+  evaluationConfigSha256: 'b'.repeat(64),
+  evaluatedAtEpoch: 13000,
+};
+assert.deepEqual(validateEvaluationReceiptInput(evalReceiptInput), [], 'complete evaluation receipt input must validate');
+const evalReceipt = await buildEvaluationReceipt(evalReceiptInput);
+assert.equal(evalReceipt.schema_version, FORGE_EVALUATION_RECEIPT_SCHEMA_VERSION, 'evaluation receipt must use forge-evaluation-receipt.v1 schema');
+assert.equal(evalReceipt.metrics.length, 4, 'evaluation receipt must preserve all metrics');
+assert.equal(evalReceipt.metrics[2].is_external, true, 'external_forge_score must be marked as external');
+assert.match(evalReceipt.receipt_sha256, /^[a-f0-9]{64}$/, 'evaluation receipt hash must be a SHA-256 digest');
+assert.ok(await verifyEvaluationReceiptIntegrity(evalReceipt), 'untampered evaluation receipt must verify integrity');
+
+// Invalid metric name rejected
+assert.ok(validateEvaluationReceiptInput({ ...evalReceiptInput, metrics: [{ metric_name: 'fake_score', value: 1, description: 'x', is_external: false }] }).length > 0, 'invalid metric name must be rejected');
+
+// Model card: complete input validates and builds
+const modelCardInput = {
+  modelRepoId: 'Thorsu/are-agent-forge-policy-v1',
+  policyFamilyId: 'forge-structured-v1',
+  sourceRepoRevision: 'd'.repeat(64),
+  trainingReceiptSha256: trainingReceipt.receipt_sha256,
+  datasetRevisionSha256: 'a'.repeat(64),
+  evaluationReceiptSha256: evalReceipt.receipt_sha256,
+  knownLimitations: 'Policy trained on limited practice runs; may not generalize.',
+  forgeExternalEvidenceScope: 'Forge scores are external observations, not locally generated.',
+  licenseRightsStatus: 'private-gated-pending-rights-review',
+  isPrivate: true,
+  createdAtEpoch: 14000,
+};
+assert.deepEqual(validateModelCardInput(modelCardInput), [], 'complete model card input must validate');
+const modelCard = await buildForgeModelCard(modelCardInput);
+assert.equal(modelCard.schema_version, FORGE_MODEL_CARD_SCHEMA_VERSION, 'model card must use forge-model-card.v1 schema');
+assert.equal(modelCard.is_private, true, 'model card must default to private/gated');
+assert.equal(modelCard.training_receipt_sha256, trainingReceipt.receipt_sha256, 'model card must link training receipt');
+assert.match(modelCard.card_sha256, /^[a-f0-9]{64}$/, 'model card hash must be a SHA-256 digest');
+assert.ok(await verifyModelCardIntegrity(modelCard), 'untampered model card must verify integrity');
+
+// Tampered model card must fail
+const tamperedCard = { ...modelCard, is_private: false };
+assert.ok(!(await verifyModelCardIntegrity(tamperedCard)), 'tampered model card must fail integrity');
+
+// --- ForgeAI rights/terms publication gate (#15) ---
+
+// Rights record: complete input validates and builds
+const rightsInput = {
+  policyTermsUrls: ['https://forgeai.gg/terms', 'https://forgeai.gg/research'],
+  observedLastUpdatedDates: ['2026-09-20', null],
+  evidenceSnapshotHashes: ['a'.repeat(64)],
+  reviewDate: '2026-09-20',
+  categoryPermissions: [
+    { category: 'are_owned_action_metadata', allowed_local_use: true, allowed_private_hf_upload: true, allowed_public_redistribution: true, allowed_model_training: true, attribution_notice_required: false, explicit_permission_ref: null },
+    { category: 'forge_observations_state', allowed_local_use: true, allowed_private_hf_upload: true, allowed_public_redistribution: false, allowed_model_training: true, attribution_notice_required: true, explicit_permission_ref: null },
+    { category: 'forge_scores', allowed_local_use: true, allowed_private_hf_upload: true, allowed_public_redistribution: false, allowed_model_training: false, attribution_notice_required: true, explicit_permission_ref: null },
+    { category: 'forge_replay_history', allowed_local_use: false, allowed_private_hf_upload: false, allowed_public_redistribution: false, allowed_model_training: false, attribution_notice_required: true, explicit_permission_ref: null },
+    { category: 'derived_labels', allowed_local_use: true, allowed_private_hf_upload: true, allowed_public_redistribution: true, allowed_model_training: true, attribution_notice_required: false, explicit_permission_ref: null },
+    { category: 'forge_screenshots_content', allowed_local_use: false, allowed_private_hf_upload: false, allowed_public_redistribution: false, allowed_model_training: false, attribution_notice_required: true, explicit_permission_ref: null },
+  ],
+  reviewerConfirmation: 'owner-confirmed-2026-09-20',
+  createdAtEpoch: 5000,
+};
+assert.deepEqual(validateRightsRecordInput(rightsInput), [], 'complete rights record input must validate');
+const rightsRecord = await buildForgeRightsRecord(rightsInput);
+assert.equal(rightsRecord.schema_version, FORGE_RIGHTS_RECORD_SCHEMA_VERSION, 'rights record must use forge-publication-rights.v1 schema');
+assert.equal(rightsRecord.category_permissions.length, 6, 'rights record must preserve all category permissions');
+assert.match(rightsRecord.record_sha256, /^[a-f0-9]{64}$/, 'rights record hash must be a SHA-256 digest');
+assert.ok(await verifyRightsRecordIntegrity(rightsRecord), 'untampered rights record must verify integrity');
+
+// Tampered rights record must fail
+const tamperedRights = { ...rightsRecord, reviewer_confirmation: 'tampered' };
+assert.ok(!(await verifyRightsRecordIntegrity(tamperedRights)), 'tampered rights record must fail integrity');
+
+// Invalid rights record input
+assert.ok(validateRightsRecordInput({ ...rightsInput, policyTermsUrls: [] }).length > 0, 'empty policy terms URLs must be rejected');
+assert.ok(validateRightsRecordInput({ ...rightsInput, reviewDate: 'invalid' }).length > 0, 'invalid review date must be rejected');
+assert.ok(validateRightsRecordInput({ ...rightsInput, categoryPermissions: [{ category: 'are_owned_action_metadata', allowed_local_use: 'yes', allowed_private_hf_upload: true, allowed_public_redistribution: true, allowed_model_training: true, attribution_notice_required: false, explicit_permission_ref: null }] }).length > 0, 'non-boolean permission must be rejected');
+
+// Publication gate: classify fields
+const fieldsToClassify = [
+  { field_name: 'action_type', category: 'are_owned_action_metadata' },
+  { field_name: 'state_summary', category: 'forge_observations_state' },
+  { field_name: 'forge_score', category: 'forge_scores' },
+  { field_name: 'replay_data', category: 'forge_replay_history' },
+  { field_name: 'derived_label', category: 'derived_labels' },
+  { field_name: 'screenshot', category: 'forge_screenshots_content' },
+];
+const gateResult = classifyFieldsForPublication(fieldsToClassify, rightsRecord);
+assert.ok(gateResult.allowed_fields.includes('action_type'), 'are_owned_action_metadata with public redistribution must be allowed');
+assert.ok(gateResult.allowed_fields.includes('derived_label'), 'derived_labels with public redistribution must be allowed');
+assert.ok(gateResult.quarantined_fields.includes('state_summary'), 'forge_observations_state without public redistribution must be quarantined');
+assert.ok(gateResult.quarantined_fields.includes('forge_score'), 'forge_scores without public redistribution must be quarantined');
+assert.ok(gateResult.quarantined_fields.includes('replay_data'), 'forge_replay_history without public redistribution must be quarantined');
+assert.ok(gateResult.quarantined_fields.includes('screenshot'), 'forge_screenshots_content without public redistribution must be quarantined');
+assert.equal(gateResult.public_publish_allowed, false, 'with quarantined fields, public publish must be blocked');
+
+// Publication gate: all fields allowed → public publish allowed
+const allAllowedFields = [
+  { field_name: 'action_type', category: 'are_owned_action_metadata' },
+  { field_name: 'derived_label', category: 'derived_labels' },
+];
+const allAllowedResult = classifyFieldsForPublication(allAllowedFields, rightsRecord);
+assert.equal(allAllowedResult.public_publish_allowed, true, 'all allowed fields must permit public publish');
+assert.doesNotThrow(() => assertPublicationAllowed(allAllowedFields, rightsRecord), 'all allowed fields must not throw');
+
+// Publication gate: quarantined fields must throw
+assert.throws(() => assertPublicationAllowed(fieldsToClassify, rightsRecord), { code: 'PUBLICATION_BLOCKED' }, 'quarantined fields must throw PUBLICATION_BLOCKED');
+
+// Unknown category defaults to quarantine
+const unknownCategoryFields = [{ field_name: 'unknown_field', category: 'are_owned_action_metadata' }];
+const unknownPerms = { ...rightsRecord, category_permissions: rightsRecord.category_permissions.filter((p) => p.category !== 'are_owned_action_metadata') };
+const unknownResult = classifyFieldsForPublication(unknownCategoryFields, unknownPerms);
+assert.ok(unknownResult.quarantined_fields.includes('unknown_field'), 'unknown category must default to quarantine');
+
+console.log('frontend core regressions: 142 assertions passed');
