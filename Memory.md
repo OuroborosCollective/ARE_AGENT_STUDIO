@@ -194,3 +194,18 @@ Evidence: Frontend core regressions 142 assertions pass (49 new: 20 training/eva
 Learned: The rights gate must be fail-closed by default — unknown categories quarantine, not allow. The contract-drift guard catches removed schema versions before they reach production. Data quality checks (monotonic turn index, gap detection) must run before the public release gate so quality issues are always caught regardless of publication status.
 Open: No real Forge runtime, practice run, or verified Forge results exist. Issue #20 is BLOCKED — awaiting practice run availability or owner authorization. Issue #18 (Forge Control Room UI readmodels) remains planned. All Forge capabilities remain scaffolding until a real Forge endpoint is available.
 Next safe step: Issue #18 — Forge Control Room UI/readmodels with strict verified-vs-derived status semantics. Or issue #20 when a practice run becomes available.
+
+### 2026-09-24 — Dependency issue fix: close implemented ForgeAI issues via PR to main
+Status: VERIFIED
+Task: Resolve the dependency-graph blockage — all ForgeAI issues #8–#19 were implemented and merged via PRs #21–#26 into the `dependency-issue-fix` branch, but only #7 was closed on GitHub because the other PRs were merged into the feature branch, not `main`. GitHub only auto-closes issues when PRs merge into the default branch. This left 12 issues open with their dependency chains showing as blocked.
+Decisions:
+- Verified all implementations are complete: 7 forge service modules, forge-runner runtime, ForgeControlRoom component, 3 HF forge dataset scripts, 3 guard scripts, 2 design docs.
+- Re-ran full test suite to confirm integrity: frontend core 142 assertions, backend 22 tests, forge runner 16 tests, HF forge dataset 8 tests, all 3 forge guards pass.
+- Fixed docs/FORGEAI_INTEGRATION.md issue map: #18 was marked "Planned" but is actually Implemented (ForgeControlRoom.tsx exists, integrated, tested).
+- Issue #20 remains BLOCKED by design (no practice run available) — stays open.
+- Created PR from `dependency-issue-fix` to `main` with Closes keywords for #8–#19 so merging closes all implemented issues and unblocks the dependency graph.
+Touched surfaces: docs/FORGEAI_INTEGRATION.md, Memory.md.
+Evidence: Frontend core 142 assertions pass. Backend 22 tests pass. Forge runner 16 tests pass. HF forge dataset 8 tests pass. Forge truth guard, secret scan, contract-drift guard all pass. All 7 forge service modules and all supporting files confirmed present.
+Learned: GitHub only auto-closes issues referenced by "Closes #N" when the PR merges into the DEFAULT branch. PRs merged into feature branches leave issues open, which breaks the dependency graph visibility even when the code is complete.
+Open: Issue #20 remains BLOCKED — no real Forge practice run available. No real Forge runtime, endpoint, or credentials exist. All Forge capabilities remain scaffolding.
+Next safe step: Merge the PR to main to close #8–#19. Then address #20 when a practice run becomes available.
