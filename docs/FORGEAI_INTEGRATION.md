@@ -131,6 +131,6 @@ Secrets are kept server-side on the VPS runner or delivered via platform-managed
 | #15 | ForgeAI rights/terms publication gate before public trajectory release | Implemented |
 | #16 | Separate HF Forge-trajectory dataset pipeline with immutable manifests | Implemented |
 | #17 | Google AI Studio + Firebase/Firestore/Cloud SQL as optional support planes | Implemented (docs/GOOGLE_SUPPORT_PLANES.md) |
-| #18 | Forge Control Room UI/readmodels with strict verified-vs-derived status semantics | Planned |
+| #18 | Forge Control Room UI/readmodels with strict verified-vs-derived status semantics | Implemented |
 | #19 | CI, contract-drift, security & exact-head release gates for Forge integration | Implemented |
 | #20 | Qualification run: first real Forge practice benchmark | Blocked (no practice run available) |
