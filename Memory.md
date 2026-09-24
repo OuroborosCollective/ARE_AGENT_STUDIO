@@ -224,3 +224,20 @@ Evidence: Backend 23 tests pass (was 22, +1 new). Full `npm run check` green: ba
 Learned: Two sibling ledgers use confusingly similar consent-basis vocabularies — dataset rows use `publication.basis ∈ {unreviewed, user_confirmed}` while operation-correction rows use `learning.basis ∈ {unreviewed, owner_confirmed}`. Copying the wrong constant across them silently zeroes a counter with no test catching it. The regression test now pins the dataset-side basis.
 Open: None from this hunt. Issue #20 remains BLOCKED (no practice run).
 Next safe step: Merge this fix to main after gates green.
+
+### 2026-09-24 — Bug-hunt: Forge runner status mapping falsely recorded rejected actions as accepted
+Status: VERIFIED
+Task: Systematic bug-family hunt starting at `forge-runner/runner.js` `runTurn()`. Search for bugs; on a find derive 6 logically next consequential errors; fix; repeat from a new starting point until 3 consecutive zero-find rounds, then fix all.
+Decisions:
+- Found one real bug family: `runTurn()` mapped trajectory ledger status with a binary ternary `httpStatusCategory === 'network_error' ? 'pending_reconciliation' : 'accepted'`. This meant `4xx` (Forge rejected), `5xx` (server error), `3xx` (redirect), and `pending` were all falsely recorded as `accepted` in the append-only trajectory ledger — violating truth boundaries #3 (submitted ≠ accepted) and #4 (local ≠ verified).
+- 6 consequential errors derived from the root cause: (1) rejected actions → `accepted`, (2) server errors → `accepted`, (3) redirects → `accepted`, (4) pending → `accepted`, (5) `forgeResponseRef` null but status `accepted` = acceptance without receipt, (6) `forgeResponseSha256` always null = reconciliation can't verify falsely-accepted records.
+- Fix: replaced the binary ternary with a three-way mapping: `2xx → accepted`, `4xx → rejected`, everything else → `pending_reconciliation`.
+- 5 regression tests added to `forge-runner/test/runner.test.js`: accepted→accepted, rejected→rejected (the regression), unobservable→pending_reconciliation, no-client→pending_reconciliation, and trajectory-store-receives-correct-status.
+- Second starting point (`datasetCodec.ts` `mana_source`): investigated suspected wrong-variable bug but confirmed the code is already correct — false alarm, zero finds.
+- Third and fourth starting points (remaining UI components, Python scripts, config): zero finds.
+- Hunt converged after 3 consecutive zero-find rounds.
+Touched surfaces: forge-runner/runner.js, forge-runner/test/runner.test.js, Memory.md.
+Evidence: Forge-runner 21 tests pass (was 16, +5 new). Backend 23 tests pass. Frontend core 142 assertions pass. Typecheck pass. Vite build pass. Truth scan, forge truth guard, secret scan, contract-drift guard all pass. HF dataset 5 tests, HF forge dataset 8 tests, HF presentation 6 tests all pass. Production entry 7 assertions pass. UI truth guards 24 assertions pass.
+Learned: The `ForgeTrajectoryRecordStatus` type includes `'rejected'` as a valid status, and `validateForgeTrajectoryRecord` accepts it, but the runner never produced it before this fix — the status was dead code. The binary ternary was a simplification that silently collapsed all non-network-error outcomes into `accepted`, creating false acceptance records in an append-only evidence ledger.
+Open: None from this hunt. Issue #20 remains BLOCKED (no practice run).
+Next safe step: Merge this fix to main after gates green.
