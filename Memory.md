@@ -107,6 +107,23 @@ Learned: A static import guard is the cheapest preventive boundary — it fails 
 Open: No real Forge runtime, public trajectory data, or verified Forge results exist. All Forge capabilities remain planned.
 Next safe step: Issue #8 — add versioned structured-control policy contract without touching are-agent-vla.v1.
 
+### 2026-09-24 — ForgeAI 02: Versioned structured-control policy contract
+Status: VERIFIED repository merge
+Task: Create the versioned structured-control policy contract for ForgeAI agent participation, separate from the frozen visual-control plane (Issue #8).
+Decisions:
+- New schema `forge-trajectory.v1` defined in `frontend/services/forgeStructuredPolicy.ts`, never the frozen visual-control schema.
+- Actions are typed structured commands (navigate, select, submit, query, wait, observe, reason), not pixel-space taps.
+- Three-stage lifecycle enforced: predicted → submitted → accepted/rejected. `submitted_action` is null until submission; `accepted` is null until independent Forge readback.
+- `ForgePolicyContract` interface defines the versioned policy contract: takes a `ForgeObservation`, produces a `ForgeStructuredAction`.
+- `DeterministicSelectFirstPolicy` reference implementation included for testing/scaffolding.
+- Validation and builder functions follow the existing `operationCorrectionCodec.ts` pattern (camelCase input → snake_case serialized record).
+- Module is self-contained: no imports from protected visual-path modules. `forge_truth_guard.mjs` confirms isolation.
+Touched surfaces: frontend/services/forgeStructuredPolicy.ts (new), frontend/scripts/run-core-tests.mjs, docs/FORGEAI_INTEGRATION.md, Memory.md.
+Evidence: forge_truth_guard.mjs passes (forge file imports no protected modules, references no frozen schema). truth_scan.mjs passes. Frontend core regressions 38 assertions pass (14 new forge assertions). Frontend typecheck passes. Full `npm run check` passes (backend, frontend core, typecheck, build, truth scan, forge guard, HF dataset tests).
+Learned: The forge guard catches the frozen schema string even in comments — the guard scans full file text, not just imports. Reference comments must paraphrase, not quote the schema name.
+Open: No real Forge runtime, action client, or trajectory ledger exists yet. The contract is scaffolding only.
+Next safe step: Issue #9 — ForgeAI contract discovery, SKILL.md parsing, credential isolation & action client.
+
 ## Backfill boundary
 
 This bootstrap captures retrievable ARE Agent Studio integration history. It is not a transcript. Older recovered blocks must be appended as `Historical recovery` entries rather than rewriting these records.

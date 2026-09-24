@@ -12,6 +12,7 @@ const esbuild = require('esbuild');
 fs.rmSync(out, { recursive: true, force: true });
 const sourceFiles = [
   'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts',
+  'services/forgeStructuredPolicy.ts',
 ];
 for (const sourceFile of sourceFiles) {
   const sourcePath = path.join(root, sourceFile);
@@ -27,6 +28,7 @@ const { NeuralPolicyEngine } = require(path.join(out, 'services/neuralPolicyEngi
 const { telemetryToDatasetRows, datasetRowsToJsonl } = require(path.join(out, 'services/datasetCodec.js'));
 const { canonicalJson, verifyDatasetReceipt, verifyOperationCorrectionReceipt } = require(path.join(out, 'services/receiptVerifier.js'));
 const { buildOperationCorrectionDraft, validateOperationCorrectionDraft } = require(path.join(out, 'services/operationCorrectionCodec.js'));
+const { validateForgeTrajectoryDraft, buildForgeTrajectoryDraft, DeterministicSelectFirstPolicy, FORGE_TRAJECTORY_SCHEMA_VERSION } = require(path.join(out, 'services/forgeStructuredPolicy.js'));
 const nodeCrypto = require('node:crypto');
 const { GameArchetype, TouchEventType } = require(path.join(out, 'types.js'));
 
@@ -101,4 +103,56 @@ const operationReceipt = { ...operationReceiptBody, receipt_sha256: nodeCrypto.c
 assert.equal((await verifyOperationCorrectionReceipt(operationReceipt, 1)).receipt_sha256, operationReceipt.receipt_sha256, 'operation correction receipt must verify against its canonical body');
 await assert.rejects(() => verifyOperationCorrectionReceipt({ ...operationReceipt, accepted_correction_ids: [] }, 1), /accepted_correction_ids|SHA-256/, 'tampered operation correction receipt must fail closed');
 
-console.log('frontend core regressions: 24 assertions passed');
+// --- Forge structured-control policy contract (forge-trajectory.v1) ---
+
+const forgeTrajectoryInput = {
+  runId: 'forge-run-001',
+  turnIndex: 0,
+  observation: {
+    observationId: 'obs-001',
+    capturedAtEpoch: 1000,
+    stateSummary: 'Forge turn 0: three route options available.',
+    availableActions: ['forge.route.a', 'forge.route.b', 'forge.route.c'],
+    observationEvidenceSha256: 'a'.repeat(64),
+  },
+  predictedAction: {
+    actionType: 'select',
+    targetRef: 'forge.route.a',
+    parameters: { route: 'a' },
+    actionSummary: 'Select the first reviewed route candidate.',
+    parametersSha256: 'b'.repeat(64),
+    riskTier: 'reversible',
+    rationale: 'Lowest-risk route per deterministic policy.',
+    confidence: 0.9,
+  },
+  policyRevisionSha256: 'c'.repeat(64),
+  capturedAtEpoch: 1001,
+};
+assert.deepEqual(validateForgeTrajectoryDraft(forgeTrajectoryInput), [], 'complete non-secret forge trajectory input must validate');
+const forgeEntry = buildForgeTrajectoryDraft(forgeTrajectoryInput);
+assert.equal(forgeEntry.schema_version, FORGE_TRAJECTORY_SCHEMA_VERSION, 'forge trajectory must use the forge-trajectory.v1 schema, never the frozen visual-control schema');
+assert.equal(forgeEntry.status, 'predicted', 'a new trajectory entry must start as predicted, not submitted or accepted');
+assert.equal(forgeEntry.submitted_action, null, 'submitted action must be null until the action is actually submitted to Forge');
+assert.equal(forgeEntry.accepted, null, 'accepted must be null until independent Forge readback reconciles the turn');
+assert.equal(forgeEntry.predicted_action.action_type, 'select', 'structured actions are typed commands, not pixel-space taps');
+assert.equal(forgeEntry.run_id, 'forge-run-001', 'trajectory entry must preserve the run reference');
+assert.deepEqual(forgeEntry.observation.available_actions, ['forge.route.a', 'forge.route.b', 'forge.route.c'], 'observation must preserve available actions');
+
+// Prediction ≠ submitted action: the entry starts with only a prediction
+assert.ok(forgeEntry.predicted_action !== null && forgeEntry.submitted_action === null, 'prediction must exist before any submission');
+
+// Invalid inputs must fail validation
+assert.ok(validateForgeTrajectoryDraft({ ...forgeTrajectoryInput, predictedAction: { ...forgeTrajectoryInput.predictedAction, actionType: 'tap_pixel' } }).length > 0, 'pixel-space action types must be rejected');
+assert.ok(validateForgeTrajectoryDraft({ ...forgeTrajectoryInput, predictedAction: { ...forgeTrajectoryInput.predictedAction, confidence: 1.5 } }).length > 0, 'confidence above 1 must be rejected');
+assert.ok(validateForgeTrajectoryDraft({ ...forgeTrajectoryInput, observation: { ...forgeTrajectoryInput.observation, observationEvidenceSha256: 'not-a-hash' } }).length > 0, 'invalid observation evidence hash must be rejected');
+assert.ok(validateForgeTrajectoryDraft({ ...forgeTrajectoryInput, policyRevisionSha256: 'short' }).length > 0, 'invalid policy revision hash must be rejected');
+
+// Deterministic reference policy
+const policy = new DeterministicSelectFirstPolicy('d'.repeat(64));
+const policyPrediction = policy.predict(forgeEntry.observation);
+assert.equal(policyPrediction.action_type, 'select', 'deterministic select-first policy must produce a select action');
+assert.equal(policyPrediction.target_ref, 'forge.route.a', 'deterministic select-first policy must select the first available action');
+assert.equal(policy.policy_revision_sha256, 'd'.repeat(64), 'policy must expose its revision hash');
+assert.equal(policy.schema_version, FORGE_TRAJECTORY_SCHEMA_VERSION, 'policy contract must declare the forge-trajectory.v1 schema');
+
+console.log('frontend core regressions: 38 assertions passed');
