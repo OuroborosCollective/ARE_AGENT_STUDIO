@@ -209,3 +209,18 @@ Evidence: Frontend core 142 assertions pass. Backend 22 tests pass. Forge runner
 Learned: GitHub only auto-closes issues referenced by "Closes #N" when the PR merges into the DEFAULT branch. PRs merged into feature branches leave issues open, which breaks the dependency graph visibility even when the code is complete.
 Open: Issue #20 remains BLOCKED — no real Forge practice run available. No real Forge runtime, endpoint, or credentials exist. All Forge capabilities remain scaffolding.
 Next safe step: Merge the PR to main to close #8–#19. Then address #20 when a practice run becomes available.
+
+### 2026-09-24 — Bug-hunt: publication-approved counter used wrong basis value
+Status: VERIFIED
+Task: Systematic bug-family hunt across the full codebase (backend stores/validation, all forge services, protected visual-path modules, CI guard scripts, HF dataset pipelines, all UI components). Start at a function, search for bugs; on a find derive the logically next follow-up bugs; fix; repeat from a new starting point until a rerun finds nothing.
+Decisions:
+- Found one real bug family: `backend/src/datasetStore.js` counted publication-approved rows with `row.publication.basis === 'owner_confirmed'`, but `validation.js` only permits basis `unreviewed`/`user_confirmed` and requires `allowed=true → basis='user_confirmed'`. The `owner_confirmed` basis belongs to the operation-correction `learning` field, not the dataset `publication` field. Consequence: `publicationApproved` was always 0 — `publicStats().publication_approved_samples` and the public-metrics endpoint reported zero approved samples even when user-confirmed rows were appended, on both append and reload paths.
+- Derived follow-ups (all same root cause, fixed by the single correction): publicStats always 0; buildPublicMetrics dataset.publication_approved_samples always 0; reload path (#initInternal) never counted existing published rows; no frontend display existed (backend-only impact).
+- Fix: changed the basis check from `owner_confirmed` to `user_confirmed` in both `#initInternal` and `#appendInternal`.
+- Regression test added: `backend/test/datasetStore.test.js` — asserts publication_approved_samples increments on append AND survives reload (new store instance re-init from the same ledger).
+- Second hunt run across all remaining modules (forge services, protected modules, guard scripts, HF pipelines, every UI component) found no further functional bugs. Hunt converged.
+Touched surfaces: backend/src/datasetStore.js, backend/test/datasetStore.test.js, Memory.md.
+Evidence: Backend 23 tests pass (was 22, +1 new). Full `npm run check` green: backend check, frontend core 142 assertions, typecheck, vite build, truth scan, forge truth guard, forge secret scan, contract-drift guard (11 schemas/22 exports), forge-runner 16 tests, HF dataset 5 tests, HF forge dataset 8 tests.
+Learned: Two sibling ledgers use confusingly similar consent-basis vocabularies — dataset rows use `publication.basis ∈ {unreviewed, user_confirmed}` while operation-correction rows use `learning.basis ∈ {unreviewed, owner_confirmed}`. Copying the wrong constant across them silently zeroes a counter with no test catching it. The regression test now pins the dataset-side basis.
+Open: None from this hunt. Issue #20 remains BLOCKED (no practice run).
+Next safe step: Merge this fix to main after gates green.

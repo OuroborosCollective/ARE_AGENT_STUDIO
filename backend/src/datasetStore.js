@@ -45,7 +45,7 @@ export class DatasetStore {
         if (row.sample_id !== expectedId) throw new Error('dataset ledger sample_id does not match its content hash identity');
         if (discovered.has(row.sample_id)) throw new Error('dataset ledger contains duplicate sample_id entries');
         discovered.add(row.sample_id);
-        if (row.publication?.allowed === true && row.publication?.basis === 'owner_confirmed') publicationApproved += 1;
+        if (row.publication?.allowed === true && row.publication?.basis === 'user_confirmed') publicationApproved += 1;
       }
     } catch (error) {
       if (error?.code !== 'ENOENT') throw error;
@@ -91,7 +91,7 @@ export class DatasetStore {
       const payload = `${uniqueRows.map((row) => canonicalJson(row)).join('\n')}\n`;
       await fs.appendFile(this.ledgerPath, payload, 'utf8');
       uniqueRows.forEach((row) => this.seen.add(row.sample_id));
-      this.publicationApproved += uniqueRows.filter((row) => row.publication?.allowed === true && row.publication?.basis === 'owner_confirmed').length;
+      this.publicationApproved += uniqueRows.filter((row) => row.publication?.allowed === true && row.publication?.basis === 'user_confirmed').length;
     }
 
     const receiptBody = {
