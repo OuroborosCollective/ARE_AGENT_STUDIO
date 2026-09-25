@@ -13,6 +13,7 @@ import {
   validateOperationCorrectionDraft,
 } from '../services/operationCorrectionCodec';
 import { globalOperationCorrectionGateway } from '../services/operationCorrectionGateway';
+import { now as clockNow } from '../services/deterministicClock';
 
 interface FormState {
   sessionId: string;
@@ -50,7 +51,7 @@ const initialForm: FormState = {
   parametersSha256: '',
   policyRevisionSha256: '',
   observationEvidenceSha256: '',
-  requestedAtEpoch: Date.now(),
+  requestedAtEpoch: clockNow(),
   riskTier: 'external',
   decision: 'reject',
   reasonCode: 'MISSING_EVIDENCE',
@@ -58,7 +59,7 @@ const initialForm: FormState = {
   rationale: '',
   correctedActionSummary: '',
   correctedParametersSha256: '',
-  capturedAtEpoch: Date.now(),
+  capturedAtEpoch: clockNow(),
   learningAllowed: false,
 };
 

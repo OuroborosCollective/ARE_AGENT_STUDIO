@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import type { DatasetReceipt, FrameTelemetry, ServerSyncConfig, TacticalRule } from '../types';
 import { globalServerGateway } from '../services/serverSyncGateway';
 import { telemetryToDatasetRows } from '../services/datasetCodec';
+import { now as clockNow } from '../services/deterministicClock';
 import { Server, Cloud, Download, UploadCloud, Layers, Copy, Check, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 interface UniversalDatasetServerProps {
@@ -41,7 +42,7 @@ export const UniversalDatasetServer: React.FC<UniversalDatasetServerProps> = ({ 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `are_agent_vla_dataset_${Date.now()}.jsonl`;
+    a.download = `are_agent_vla_dataset_${clockNow()}.jsonl`;
     a.click();
     URL.revokeObjectURL(url);
   };

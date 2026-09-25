@@ -47,6 +47,8 @@ jobs:
         run: python scripts/test_hf_presentation.py
       - name: Truth-path scan
         run: node scripts/truth_scan.mjs
+      - name: Determinism scan
+        run: node scripts/determinism_scan.mjs
       - name: Forge architecture guard
         run: node scripts/forge_truth_guard.mjs
       - name: Forge runner tests

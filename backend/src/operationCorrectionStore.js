@@ -9,6 +9,7 @@ import {
   validateOperationCorrectionRow,
 } from './operationCorrectionValidation.js';
 import { canonicalJson, sha256Hex } from './validation.js';
+import { isoTimestamp } from './deterministicClock.js';
 
 function candidateMaterial(row) {
   return {
@@ -113,7 +114,7 @@ export class OperationCorrectionStore {
 
     const receiptBody = {
       receipt_version: OPERATION_CORRECTION_RECEIPT_VERSION,
-      accepted_at: new Date().toISOString(),
+      accepted_at: isoTimestamp(),
       client_id: metadata.clientId || null,
       requested_rows: normalized.length,
       accepted_rows: uniqueRows.length,

@@ -23,6 +23,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createRunStateMachine, RUN_STATES } from './stateMachine.js';
 import { getRunnerHealth } from './health.js';
+import { now as clockNow } from './deterministicClock.js';
 
 export class ForgeRunner {
   constructor({ dataDir, trajectoryStore, actionClient, policy, contract }) {
@@ -87,7 +88,7 @@ export class ForgeRunner {
     this.turnCount += 1;
 
     const submissionResult = this.actionClient
-      ? this.actionClient.submitAction(predictedAction, turnIndex, Date.now())
+      ? this.actionClient.submitAction(predictedAction, turnIndex, clockNow())
       : { outcome: 'unobservable', forge_receipt_id: null, error_message: 'No action client configured.' };
 
     const httpStatusCategory = submissionResult.outcome === 'accepted' ? '2xx'
@@ -118,7 +119,7 @@ export class ForgeRunner {
         httpStatusCategory,
         forgeResponseRef: submissionResult.forge_receipt_id ?? null,
         forgeResponseSha256: null,
-        localTimestampEpoch: Date.now(),
+        localTimestampEpoch: clockNow(),
         forgeTimestampEpoch: null,
         status,
       });
@@ -202,7 +203,7 @@ export class ForgeRunner {
       policyRevisionSha256: this.policyRevisionSha256,
       turnCount: this.turnCount,
       reconciliationBacklog: this.reconciliationBacklog,
-      savedAt: Date.now(),
+      savedAt: clockNow(),
     };
     await fs.writeFile(this.durableStatePath, JSON.stringify(state, null, 2), 'utf8');
   }

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { TouchAction, TouchEventType, AgentPrediction, GameArchetype } from '../types';
 import { globalNeuralPolicy } from '../services/neuralPolicyEngine';
+import { now as clockNow } from '../services/deterministicClock';
 import {
   Monitor,
   Tv,
@@ -219,7 +220,7 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
 
     const isHumanTakeover = isAgentActive;
 
-    const now = Date.now();
+    const now = clockNow();
     if (type === TouchEventType.DOWN) pointerStartRef.current.set(e.pointerId, now);
     const startedAt = pointerStartRef.current.get(e.pointerId) ?? now;
     const durationMs = Math.max(0, now - startedAt);
@@ -385,7 +386,7 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
         }
 
         // Radar Scanning Pulse
-        const pulse = (Date.now() / 15) % (w * 0.45);
+        const pulse = (performance.now() / 15) % (w * 0.45);
         ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -450,7 +451,7 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
       />
 
       {/* Phone Frame Wrapper */}
-      <div className="relative p-3 bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 rounded-[40px] shadow-2xl border-2 border-slate-700/80 neon-border">
+      <div className="relative w-full max-w-[420px] p-3 bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 rounded-[40px] shadow-2xl border-2 border-slate-700/80 neon-border">
 
         {/* Notch */}
         <div className="absolute top-5 left-1/2 -translate-x-1/2 w-28 h-4 bg-black/90 rounded-full flex items-center justify-center gap-3 z-20">
@@ -467,7 +468,7 @@ export const DeviceCanvas: React.FC<DeviceCanvasProps> = ({
             onPointerDown={(e) => handlePointerInteraction(e, TouchEventType.DOWN)}
             onPointerMove={(e) => e.buttons > 0 && handlePointerInteraction(e, TouchEventType.MOVE)}
             onPointerUp={(e) => handlePointerInteraction(e, TouchEventType.UP)}
-            className="block cursor-crosshair touch-none select-none"
+            className="block w-full max-w-[380px] h-auto cursor-crosshair touch-none select-none"
           />
 
           {/* Touch Ripples */}

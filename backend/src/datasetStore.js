@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { canonicalJson, deriveSampleId, sha256Hex, validateDatasetRow } from './validation.js';
+import { isoTimestamp } from './deterministicClock.js';
 
 export class DatasetStore {
   constructor({ dataDir }) {
@@ -96,7 +97,7 @@ export class DatasetStore {
 
     const receiptBody = {
       receipt_version: 'are-agent-receipt.v1',
-      accepted_at: new Date().toISOString(),
+      accepted_at: isoTimestamp(),
       client_id: metadata.clientId || null,
       requested_rows: normalized.length,
       accepted_rows: uniqueRows.length,

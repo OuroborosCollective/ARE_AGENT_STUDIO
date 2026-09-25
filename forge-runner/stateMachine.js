@@ -16,6 +16,8 @@
  * frozen visual-control schema. The static guard enforces this.
  */
 
+import { now as clockNow } from './deterministicClock.js';
+
 export const RUN_STATES = {
   IDLE: 'IDLE',
   PREPARED: 'PREPARED',
@@ -57,7 +59,7 @@ export function isTerminalState(state) {
  */
 export function createRunStateMachine(initialState = RUN_STATES.IDLE) {
   let state = initialState;
-  const history = [{ state, transition: null, at: Date.now() }];
+  const history = [{ state, transition: null, at: clockNow() }];
 
   return {
     get state() {
@@ -82,7 +84,7 @@ export function createRunStateMachine(initialState = RUN_STATES.IDLE) {
       }
       const from = state;
       state = to;
-      history.push({ state, transition: { from, to }, at: Date.now(), evidence });
+      history.push({ state, transition: { from, to }, at: clockNow(), evidence });
       return { from, to };
     },
 

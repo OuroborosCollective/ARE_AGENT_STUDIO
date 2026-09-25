@@ -22,6 +22,7 @@ import {
 import { synthesizePlaybookRules } from './services/advisoryService';
 import { globalNeuralPolicy } from './services/neuralPolicyEngine';
 import { globalServerGateway } from './services/serverSyncGateway';
+import { now as clockNow, uniqueId as clockUniqueId } from './services/deterministicClock';
 import { Navbar } from './components/Navbar';
 import { DeviceCanvas } from './components/DeviceCanvas';
 import { ObservationRecorder } from './components/ObservationRecorder';
@@ -38,11 +39,13 @@ import { InteractiveTerminal } from './components/InteractiveTerminal';
 import { BenchmarkStudio } from './components/BenchmarkStudio';
 import { CodebaseExporter } from './components/CodebaseExporter';
 import { ForgeControlRoom } from './components/ForgeControlRoom';
+import { useDeviceDetect } from './hooks/useDeviceDetect';
 
 export default function App() {
   const [activeMode, setActiveMode] = useState<SystemMode>(SystemMode.OBSERVE_RECORD);
   const [device, setDevice] = useState<DeviceConfig>(DEFAULT_DEVICE);
   const [gameArchetype, setGameArchetype] = useState<GameArchetype>(GameArchetype.FPS);
+  const viewport = useDeviceDetect();
 
   // Real Observation & Telemetry State
   const [isRecording, setIsRecording] = useState(false);
@@ -52,7 +55,7 @@ export default function App() {
   const [latestVisualFeatures, setLatestVisualFeatures] = useState<number[] | null>(null);
   const [publicationAllowed, setPublicationAllowed] = useState(false);
   const frameCounterRef = useRef(1);
-  const sessionIdRef = useRef(globalThis.crypto?.randomUUID?.() || `session-${Date.now()}`);
+  const sessionIdRef = useRef(globalThis.crypto?.randomUUID?.() || `session-${clockNow()}`);
 
   // Real-time Vision Detected Metrics from live device screen
   const [liveVisionState, setLiveVisionState] = useState({
@@ -95,8 +98,8 @@ export default function App() {
   // Handle DAgger takeover when human touches screen during autonomous control
   const handleDAggerInterventionTriggered = useCallback((agentAction: [number, number], humanAction: TouchAction) => {
     const newIntervention: DAggerIntervention = {
-      id: `DAGGER-${Date.now().toString().slice(-4)}`,
-      timestamp: Date.now(),
+      id: clockUniqueId('DAGGER'),
+      timestamp: clockNow(),
       frameSnapshot: latestFrameSnapshot || '',
       agentPredictedAction: agentAction,
       humanCorrectedAction: [humanAction.x, humanAction.y],
@@ -130,7 +133,7 @@ export default function App() {
 
       const telemetry: FrameTelemetry = {
         frameId: frameCounterRef.current++,
-        timestamp: Date.now(),
+        timestamp: clockNow(),
         imageDataUrl: latestFrameSnapshot,
         action,
         gameState: gamePhase,
@@ -274,11 +277,11 @@ export default function App() {
       />
 
       {/* Main Studio Viewport */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${viewport.isPhone ? 'py-4' : 'py-6'}`}>
+        <div className={`grid grid-cols-1 lg:grid-cols-12 ${viewport.isCompact ? 'gap-6' : 'gap-8'} items-start`}>
 
           {/* Left Column: Real Phone Screen Canvas Receiver */}
-          {activeMode !== SystemMode.OPERATION_CORRECTION_LEARNING && activeMode !== SystemMode.FORGE_CONTROL_ROOM && <div className="lg:col-span-5 flex justify-center sticky top-24">
+          {activeMode !== SystemMode.OPERATION_CORRECTION_LEARNING && activeMode !== SystemMode.FORGE_CONTROL_ROOM && <div className="lg:col-span-5 flex justify-center lg:sticky lg:top-24">
             <DeviceCanvas
               onHumanTouch={handleHumanTouch}
               isAgentActive={isAgentRunning}
@@ -297,7 +300,7 @@ export default function App() {
                 isRecording={isRecording}
                 onToggleRecording={() => {
                   if (!isRecording) {
-                    sessionIdRef.current = globalThis.crypto?.randomUUID?.() || `session-${Date.now()}`;
+                    sessionIdRef.current = globalThis.crypto?.randomUUID?.() || `session-${clockNow()}`;
                     frameCounterRef.current = 1;
                   }
                   setIsRecording((prev) => !prev);
@@ -305,7 +308,7 @@ export default function App() {
                 recordedTelemetries={recordedTelemetries}
                 onClearTelemetry={() => {
                   setRecordedTelemetries([]);
-                  sessionIdRef.current = globalThis.crypto?.randomUUID?.() || `session-${Date.now()}`;
+                  sessionIdRef.current = globalThis.crypto?.randomUUID?.() || `session-${clockNow()}`;
                   frameCounterRef.current = 1;
                 }}
                 latestAction={latestAction}
