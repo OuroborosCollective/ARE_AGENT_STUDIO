@@ -79,7 +79,7 @@ async function readBody(req, maxBytes) {
 }
 
 function parseRows(raw, contentType) {
-  if (!raw.trim()) throw new Error('request body is empty');
+  if (!raw.trim()) { const err = new Error('request body is empty'); err.code = 'INVALID_REQUEST_BODY'; throw err; }
   if (contentType.includes('application/jsonl') || contentType.includes('application/x-ndjson')) {
     return raw.split('\n').filter((line) => line.trim()).map((line, index) => {
       try { return JSON.parse(line); }
@@ -217,12 +217,15 @@ export async function createHttpServer(options = {}) {
       }
       if (req.method === 'POST' && url.pathname === '/api/v1/device/tap') {
         const raw = await readBody(req, Math.min(maxBytes, 64 * 1024));
-        const result = await adb.injectTap(JSON.parse(raw));
+        let parsed;
+        try { parsed = JSON.parse(raw); } catch { const err = new Error('request body is not valid JSON'); err.code = 'INVALID_JSON'; throw err; }
+        const result = await adb.injectTap(parsed);
         return json(res, 200, { success: true, result });
       }
       if (req.method === 'POST' && url.pathname === '/api/v1/advisory/complete') {
         const raw = await readBody(req, maxBytes);
-        const body = JSON.parse(raw);
+        let body;
+        try { body = JSON.parse(raw); } catch { const err = new Error('request body is not valid JSON'); err.code = 'INVALID_JSON'; throw err; }
         const result = await advisory.complete({ prompt: body?.prompt, imageDataUrl: body?.image_data_url });
         return json(res, 200, { success: true, result });
       }

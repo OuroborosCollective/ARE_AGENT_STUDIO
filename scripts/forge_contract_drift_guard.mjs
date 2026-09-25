@@ -32,6 +32,7 @@ const EXPECTED_SCHEMAS = [
   { file: 'frontend/services/forgeTrainingReceipt.ts', version: 'forge-evaluation-receipt.v1' },
   { file: 'frontend/services/forgeTrainingReceipt.ts', version: 'forge-model-card.v1' },
   { file: 'frontend/services/forgeRightsGate.ts', version: 'forge-publication-rights.v1' },
+  { file: 'frontend/services/forgeQualificationRun.ts', version: 'forge-qualification-run.v1' },
 ];
 
 // Expected exported function names per module
@@ -43,6 +44,7 @@ const EXPECTED_EXPORTS = [
   { file: 'frontend/services/forgeLearningEligibility.ts', exports: ['checkLearningEligibility', 'buildForgeCorrection', 'splitEpisodes', 'buildPolicyRevisionManifest'] },
   { file: 'frontend/services/forgeTrainingReceipt.ts', exports: ['buildTrainingReceipt', 'buildEvaluationReceipt', 'buildForgeModelCard'] },
   { file: 'frontend/services/forgeRightsGate.ts', exports: ['buildForgeRightsRecord', 'classifyFieldsForPublication', 'assertPublicationAllowed'] },
+  { file: 'frontend/services/forgeQualificationRun.ts', exports: ['buildQualificationEvidenceBundle', 'validateQualificationRunInput', 'checkQualificationPreconditions', 'verifyQualificationEvidenceIntegrity'] },
 ];
 
 for (const { file, version } of EXPECTED_SCHEMAS) {

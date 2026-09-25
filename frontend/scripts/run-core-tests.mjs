@@ -20,6 +20,7 @@ const sourceFiles = [
   'services/forgeLearningEligibility.ts',
   'services/forgeTrainingReceipt.ts',
   'services/forgeRightsGate.ts',
+  'services/forgeQualificationRun.ts',
 ];
 for (const sourceFile of sourceFiles) {
   const sourcePath = path.join(root, sourceFile);
@@ -42,6 +43,7 @@ const { validateForgeReconciliationInput, buildForgeReconciliationReceipt, verif
 const { checkLearningEligibility, LEARNING_RECONCILIATION_THRESHOLD, buildForgeCorrection, validateForgeCorrectionInput, verifyCorrectionIntegrity, splitEpisodes, buildPolicyRevisionManifest, validatePolicyRevisionManifestInput, verifyPolicyRevisionManifestIntegrity, FORGE_LEARNING_SCHEMA_VERSION, FORGE_CORRECTION_SCHEMA_VERSION, FORGE_POLICY_MANIFEST_SCHEMA_VERSION } = require(path.join(out, 'services/forgeLearningEligibility.js'));
 const { buildTrainingReceipt, validateTrainingReceiptInput, verifyTrainingReceiptIntegrity, buildEvaluationReceipt, validateEvaluationReceiptInput, verifyEvaluationReceiptIntegrity, buildForgeModelCard, validateModelCardInput, verifyModelCardIntegrity, FORGE_TRAINING_RECEIPT_SCHEMA_VERSION, FORGE_EVALUATION_RECEIPT_SCHEMA_VERSION, FORGE_MODEL_CARD_SCHEMA_VERSION } = require(path.join(out, 'services/forgeTrainingReceipt.js'));
 const { buildForgeRightsRecord, validateRightsRecordInput, verifyRightsRecordIntegrity, classifyFieldsForPublication, assertPublicationAllowed, ALL_RIGHTS_CATEGORIES, FORGE_RIGHTS_RECORD_SCHEMA_VERSION } = require(path.join(out, 'services/forgeRightsGate.js'));
+const { buildQualificationEvidenceBundle, validateQualificationRunInput, checkQualificationPreconditions, verifyQualificationEvidenceIntegrity, FORGE_QUALIFICATION_RUN_SCHEMA_VERSION } = require(path.join(out, 'services/forgeQualificationRun.js'));
 const nodeCrypto = require('node:crypto');
 const { GameArchetype, TouchEventType } = require(path.join(out, 'types.js'));
 
@@ -672,4 +674,84 @@ const unknownPerms = { ...rightsRecord, category_permissions: rightsRecord.categ
 const unknownResult = classifyFieldsForPublication(unknownCategoryFields, unknownPerms);
 assert.ok(unknownResult.quarantined_fields.includes('unknown_field'), 'unknown category must default to quarantine');
 
-console.log('frontend core regressions: 142 assertions passed');
+// --- ForgeAI qualification run evidence bundle (#20) ---
+
+// Blocked bundle: no practice run authorized — must be BLOCKED
+const blockedInput = {
+  runId: null,
+  dungeonId: null,
+  gitSha: 'a'.repeat(64),
+  runnerImageDigest: null,
+  policyRevisionSha256: null,
+  policyConfigSha256: null,
+  forgeContractSha256: null,
+  skillMdSha256: null,
+  trajectoryRootHash: null,
+  terminalState: null,
+  externalScore: null,
+  reconciliationVerdict: null,
+  learningReceiptSha256: null,
+  policyNPlus1ArtifactHash: null,
+  hfSnapshotManifestSha256: null,
+  practiceRunAuthorized: false,
+  createdAtEpoch: 15000,
+};
+const blockedErrors = validateQualificationRunInput(blockedInput);
+assert.equal(blockedErrors.length, 0, 'blocked qualification input must validate');
+const blockedBundle = await buildQualificationEvidenceBundle(blockedInput);
+assert.equal(blockedBundle.schema_version, FORGE_QUALIFICATION_RUN_SCHEMA_VERSION, 'qualification bundle must use forge-qualification-run.v1 schema');
+assert.equal(blockedBundle.status, 'BLOCKED', 'no authorized practice run must yield BLOCKED status');
+assert.equal(blockedBundle.practice_run_authorized, false, 'must record practice run as not authorized');
+assert.ok(blockedBundle.preconditions.some((p) => !p.met), 'blocked bundle must have unmet preconditions');
+assert.ok(blockedBundle.evidence.every((e) => e.status === 'UNOBSERVABLE' || e.status === 'UNPROVABLE' || e.status === 'DERIVED'), 'blocked bundle evidence must be UNOBSERVABLE/UNPROVABLE/DERIVED, never VERIFIED');
+assert.match(blockedBundle.bundle_sha256, /^[a-f0-9]{64}$/, 'bundle hash must be a SHA-256 digest');
+assert.equal(blockedBundle.qualification_id, blockedBundle.bundle_sha256, 'qualification ID must equal bundle hash');
+assert.ok(await verifyQualificationEvidenceIntegrity(blockedBundle), 'untampered blocked bundle must verify integrity');
+
+// Tampered bundle must fail integrity
+const tamperedBundle = { ...blockedBundle, status: 'COMPLETED' };
+assert.ok(!(await verifyQualificationEvidenceIntegrity(tamperedBundle)), 'tampered bundle must fail integrity');
+
+// Ready bundle: all preconditions met but no run executed
+const readyInput = {
+  ...blockedInput,
+  runnerImageDigest: 'sha256:abc123',
+  policyRevisionSha256: 'b'.repeat(64),
+  policyConfigSha256: 'c'.repeat(64),
+  forgeContractSha256: 'd'.repeat(64),
+  skillMdSha256: 'e'.repeat(64),
+  trajectoryRootHash: 'f'.repeat(64),
+  reconciliationVerdict: 'VERIFIED',
+  learningReceiptSha256: '1'.repeat(64),
+  hfSnapshotManifestSha256: '2'.repeat(64),
+  practiceRunAuthorized: true,
+};
+const readyBundle = await buildQualificationEvidenceBundle(readyInput);
+assert.equal(readyBundle.status, 'READY', 'all preconditions met with no run must yield READY');
+assert.ok(readyBundle.preconditions.every((p) => p.met), 'ready bundle must have all preconditions met');
+
+// Completed bundle: run executed and reconciled
+const completedInput = {
+  ...readyInput,
+  runId: 'forge-run-qual-001',
+  dungeonId: 'forge-dungeon-001',
+  terminalState: 'terminal',
+  externalScore: '42',
+  policyNPlus1ArtifactHash: '3'.repeat(64),
+};
+const completedBundle = await buildQualificationEvidenceBundle(completedInput);
+assert.equal(completedBundle.status, 'COMPLETED', 'terminal run with reconciliation must yield COMPLETED');
+assert.ok(completedBundle.evidence.some((e) => e.field === 'run_id' && e.status === 'OBSERVED'), 'completed bundle must have observed run_id');
+assert.ok(completedBundle.evidence.some((e) => e.field === 'external_score' && e.status === 'VERIFIED'), 'completed bundle must have verified external_score');
+
+// Invalid input must fail validation
+assert.ok(validateQualificationRunInput({ ...blockedInput, gitSha: 'not-a-hash' }).length > 0, 'invalid git SHA must be rejected');
+assert.ok(validateQualificationRunInput({ ...blockedInput, createdAtEpoch: -1 }).length > 0, 'negative epoch must be rejected');
+assert.ok(validateQualificationRunInput({ ...blockedInput, practiceRunAuthorized: 'yes' }).length > 0, 'non-boolean practiceRunAuthorized must be rejected');
+
+// Precondition check function
+const preconditions = checkQualificationPreconditions(blockedInput);
+assert.equal(preconditions.length, 11, 'must check all 11 preconditions from the evidence doc');
+assert.ok(preconditions.some((p) => p.id === 'practice_run_authorized' && !p.met), 'practice_run_authorized precondition must be unmet when not authorized');
+
+console.log('frontend core regressions: 165 assertions passed');

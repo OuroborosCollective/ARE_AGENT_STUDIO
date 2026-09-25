@@ -141,3 +141,34 @@ test('a misconfigured advisory URL degrades to disabled instead of crashing the 
   assert.equal(gateway.enabled, false);
   await assert.rejects(() => gateway.complete({ prompt: 'x' }), (error) => error.code === 'ADVISORY_DISABLED');
 });
+
+test('empty telemetry body returns 422, not 400 (INVALID_REQUEST_BODY family)', async (t) => {
+  const { server, base } = await startServer({ writeEnabled: true });
+  t.after(() => server.close());
+  const res = await fetch(`${base}/api/v1/telemetry/push`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer tok' },
+    body: '   ',
+  });
+  assert.equal(res.status, 422);
+  assert.equal((await res.json()).success, false);
+});
+
+test('malformed JSON body for device tap returns 422, not 400 (INVALID_JSON family)', async (t) => {
+  const adb = createAdbBridge({ enabled: true, allowedSerials: ['serial1'] });
+  const { server, base } = await startServer({ adbBridge: adb });
+  t.after(() => server.close());
+  const res = await post(base, '/api/v1/device/tap', 'not json');
+  assert.equal(res.status, 422);
+});
+
+test('malformed JSON body for advisory complete returns 422, not 400 (INVALID_JSON family)', async (t) => {
+  const { server, base } = await startServer();
+  t.after(() => server.close());
+  const res = await fetch(`${base}/api/v1/advisory/complete`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer tok' },
+    body: 'not json',
+  });
+  assert.equal(res.status, 422);
+});
