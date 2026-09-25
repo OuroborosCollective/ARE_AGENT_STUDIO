@@ -59,7 +59,7 @@ export const TacticalMemoryView: React.FC<TacticalMemoryViewProps> = ({
   const handleAdoptAIRecommendation = () => {
     if (!aiAnalysisResult) return;
     const rule: TacticalRule = {
-      id: `TR-${Date.now().toString().slice(-4)}`,
+      id: `TR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       condition: `Phase == ${aiAnalysisResult.gameState} AND Enemies >= ${aiAnalysisResult.enemiesCount}`,
       gamePhase: aiAnalysisResult.gameState,
       actionDirective: aiAnalysisResult.recommendedDirective,
@@ -76,7 +76,7 @@ export const TacticalMemoryView: React.FC<TacticalMemoryViewProps> = ({
     e.preventDefault();
     if (!newCondition || !newDirective) return;
     const rule: TacticalRule = {
-      id: `TR-${Date.now().toString().slice(-4)}`,
+      id: `TR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       condition: newCondition,
       gamePhase: newPhase,
       actionDirective: newDirective,

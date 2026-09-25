@@ -133,4 +133,4 @@ Secrets are kept server-side on the VPS runner or delivered via platform-managed
 | #17 | Google AI Studio + Firebase/Firestore/Cloud SQL as optional support planes | Implemented (docs/GOOGLE_SUPPORT_PLANES.md) |
 | #18 | Forge Control Room UI/readmodels with strict verified-vs-derived status semantics | Implemented |
 | #19 | CI, contract-drift, security & exact-head release gates for Forge integration | Implemented |
-| #20 | Qualification run: first real Forge practice benchmark | Blocked (no practice run available) |
+| #20 | Qualification run: first real Forge practice benchmark | Baugrundstück implemented (BLOCKED — no practice run available) |
