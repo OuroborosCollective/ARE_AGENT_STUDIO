@@ -7,6 +7,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const operationStudio = fs.readFileSync(path.join(root, 'components', 'OperationCorrectionStudio.tsx'), 'utf8');
 const forgeControlRoom = fs.readFileSync(path.join(root, 'components', 'ForgeControlRoom.tsx'), 'utf8');
+const observationRecorder = fs.readFileSync(path.join(root, 'components', 'ObservationRecorder.tsx'), 'utf8');
+const tacticalMemory = fs.readFileSync(path.join(root, 'components', 'TacticalMemoryView.tsx'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'App.tsx'), 'utf8');
 const shell = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const entry = fs.readFileSync(path.join(root, 'index.tsx'), 'utf8');
@@ -39,4 +41,15 @@ assert.match(forgeControlRoom, /quarantine/i, 'Forge Control Room must support q
 assert.match(forgeControlRoom, /rights.*gate|rights.*unresolved/i, 'Forge Control Room must block public publish while rights gate is unresolved');
 assert.match(app, /FORGE_CONTROL_ROOM/, 'App.tsx must integrate the Forge Control Room mode');
 
-console.log('frontend UI truth guards: 24 assertions passed');
+// ObservationRecorder truth-boundary guards (error-family big hunt)
+assert.doesNotMatch(observationRecorder, /ESTIMATED HP/, 'HP must not be labeled "estimated"; it is detector-sourced or unobservable, never an estimate');
+assert.match(observationRecorder, /HP \(DETECTOR\)/, 'HP field must be attributed to its detector source');
+assert.doesNotMatch(observationRecorder, /\[0\.0000, 0\.0000\]/, 'an absent touch must not be rendered as a zero coordinate fact');
+assert.match(observationRecorder, /hpPercentage == null/, 'unknown HP must be guarded before rendering, never shown as null%');
+assert.match(observationRecorder, /\? '—'/, 'unknown/absent values must render as em-dash, never zero or null');
+
+// TacticalMemoryView advisory truth-boundary guards (error-family big hunt)
+assert.match(tacticalMemory, /Advisory est\./, 'advisory HP/Mana/Hostiles must be qualified as estimates, not observed game-state facts');
+assert.doesNotMatch(tacticalMemory, />\s*HP: \{aiAnalysisResult\.hpEstimated\}%/, 'advisory HP must not be rendered as a bare observed fact');
+
+console.log('frontend UI truth guards: 31 assertions passed');

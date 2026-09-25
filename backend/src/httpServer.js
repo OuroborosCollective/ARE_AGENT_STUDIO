@@ -90,6 +90,19 @@ function parseRows(raw, contentType) {
   return Array.isArray(parsed) ? parsed : [parsed];
 }
 
+// Central, complete error-code -> HTTP-status resolver. Previously a fragile
+// hardcoded chain that silently dropped INVALID_VERIFIED_IMITATION (-> 400
+// instead of 422) and left uncoded downstream execution errors as 400.
+function statusForError(error) {
+  const code = error?.code;
+  if (code === 'ENTITY_TOO_LARGE') return 413;
+  if (code === 'ADB_SERIAL_DENIED') return 403;
+  if (code && code.endsWith('_DISABLED')) return 503; // *_WRITE_DISABLED and *_DISABLED
+  if (code === 'ADVISORY_PROVIDER_ERROR' || code === 'ADVISORY_INVALID_RESPONSE' || code === 'ADB_EXECUTION_ERROR') return 502;
+  if (code && (code.startsWith('INVALID_') || code === 'ADVISORY_INVALID_REQUEST' || code === 'ADVISORY_CONFIG_INVALID' || code === 'ADB_INVALID_INPUT')) return 422;
+  return 400;
+}
+
 function allowedOriginHeaders(req, allowedOrigins) {
   const origin = req.headers.origin;
   if (!origin) return {};
@@ -218,16 +231,7 @@ export async function createHttpServer(options = {}) {
       }
       return json(res, 404, { success: false, error: 'not found' });
     } catch (error) {
-      const status = error?.code === 'ENTITY_TOO_LARGE' ? 413
-        : error?.code === 'DATASET_WRITE_DISABLED' ? 503
-        : error?.code === 'OPERATION_CORRECTION_WRITE_DISABLED' ? 503
-        : error?.code === 'VERIFIED_IMITATION_WRITE_DISABLED' ? 503
-        : error?.code === 'ADB_DISABLED' ? 503
-        : error?.code === 'ADB_SERIAL_DENIED' ? 403
-        : error?.code === 'ADVISORY_DISABLED' ? 503
-        : error?.code === 'ADVISORY_PROVIDER_ERROR' ? 502
-        : ['INVALID_JSONL', 'INVALID_DATASET_ROW', 'INVALID_OPERATION_CORRECTION', 'ADVISORY_INVALID_REQUEST', 'ADVISORY_INVALID_RESPONSE', 'ADVISORY_CONFIG_INVALID'].includes(error?.code) ? 422
-        : 400;
+      const status = statusForError(error);
       return json(res, status, { success: false, error: error?.message || 'request rejected' });
     }
   });

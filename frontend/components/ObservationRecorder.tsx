@@ -285,13 +285,13 @@ export const ObservationRecorder: React.FC<ObservationRecorderProps> = ({
                   <span className="text-cyan-300">
                     {selectedFrame.action
                       ? `[${selectedFrame.action.x.toFixed(4)}, ${selectedFrame.action.y.toFixed(4)}]`
-                      : '[0.0000, 0.0000]'}
+                      : '—'}
                   </span>
                 </div>
 
                 <div className="p-2 bg-slate-900 rounded border border-slate-800">
-                  <span className="text-slate-500 block text-[10px]">ESTIMATED HP</span>
-                  <span className="text-emerald-400 font-bold">{selectedFrame.hpPercentage}%</span>
+                  <span className="text-slate-500 block text-[10px]">HP (DETECTOR)</span>
+                  <span className="text-emerald-400 font-bold">{selectedFrame.hpPercentage == null ? '—' : `${selectedFrame.hpPercentage}%`}</span>
                 </div>
               </div>
 
