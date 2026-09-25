@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FrameTelemetry, TouchAction, TouchEventType } from '../types';
+import { now as clockNow, formatLocalTime } from '../services/deterministicClock';
 import {
   Radio,
   Download,
@@ -67,7 +68,7 @@ export const ObservationRecorder: React.FC<ObservationRecorderProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `actions_${Date.now()}.jsonl`;
+    a.download = `actions_${clockNow()}.jsonl`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -270,7 +271,7 @@ export const ObservationRecorder: React.FC<ObservationRecorderProps> = ({
                   FRAME INSPECTION: #{selectedFrame.frameId}
                 </span>
                 <span className="text-[10px] font-mono text-slate-500">
-                  {new Date(selectedFrame.timestamp).toLocaleTimeString()}
+                  {formatLocalTime(selectedFrame.timestamp)}
                 </span>
               </div>
 

@@ -9,6 +9,7 @@ import {
   validateVerifiedImitationRow,
 } from './verifiedImitationValidation.js';
 import { canonicalJson, sha256Hex } from './validation.js';
+import { isoTimestamp } from './deterministicClock.js';
 
 /**
  * A separate append-only ledger for independently recorded device-readback
@@ -107,7 +108,7 @@ export class VerifiedImitationStore {
 
     const receiptBody = {
       receipt_version: VERIFIED_IMITATION_RECEIPT_VERSION,
-      accepted_at: new Date().toISOString(),
+      accepted_at: isoTimestamp(),
       client_id: metadata.clientId || null,
       requested_rows: normalized.length,
       accepted_rows: uniqueRows.length,

@@ -13,6 +13,7 @@ const esbuild = require('esbuild');
 fs.rmSync(out, { recursive: true, force: true });
 const sourceFiles = [
   'types.ts', 'constants.ts', 'services/neuralPolicyEngine.ts', 'services/datasetCodec.ts', 'services/receiptVerifier.ts', 'services/operationCorrectionCodec.ts',
+  'services/deterministicClock.ts',
   'services/forgeStructuredPolicy.ts',
   'services/forgeContractClient.ts',
   'services/forgeTrajectoryStore.ts',
@@ -39,6 +40,7 @@ const { buildOperationCorrectionDraft, validateOperationCorrectionDraft } = requ
 const { validateForgeTrajectoryDraft, buildForgeTrajectoryDraft, DeterministicSelectFirstPolicy, FORGE_TRAJECTORY_SCHEMA_VERSION } = require(path.join(out, 'services/forgeStructuredPolicy.js'));
 const { validateForgeContractDiscovery, buildForgeContract, verifyForgeContractIntegrity, ForgeCredentialVault, ForgeActionClient, FORGE_CONTRACT_SCHEMA_VERSION } = require(path.join(out, 'services/forgeContractClient.js'));
 const { ForgeTrajectoryStore, validateForgeTrajectoryRecord, FORGE_TRAJECTORY_LEDGER_SCHEMA_VERSION } = require(path.join(out, 'services/forgeTrajectoryStore.js'));
+const detClock = require(path.join(out, 'services/deterministicClock.js'));
 const { validateForgeReconciliationInput, buildForgeReconciliationReceipt, verifyReconciliationIntegrity, computeReconciliationVerdict, FORGE_RECONCILIATION_SCHEMA_VERSION } = require(path.join(out, 'services/forgeReconciliation.js'));
 const { checkLearningEligibility, LEARNING_RECONCILIATION_THRESHOLD, buildForgeCorrection, validateForgeCorrectionInput, verifyCorrectionIntegrity, splitEpisodes, buildPolicyRevisionManifest, validatePolicyRevisionManifestInput, verifyPolicyRevisionManifestIntegrity, FORGE_LEARNING_SCHEMA_VERSION, FORGE_CORRECTION_SCHEMA_VERSION, FORGE_POLICY_MANIFEST_SCHEMA_VERSION } = require(path.join(out, 'services/forgeLearningEligibility.js'));
 const { buildTrainingReceipt, validateTrainingReceiptInput, verifyTrainingReceiptIntegrity, buildEvaluationReceipt, validateEvaluationReceiptInput, verifyEvaluationReceiptIntegrity, buildForgeModelCard, validateModelCardInput, verifyModelCardIntegrity, FORGE_TRAINING_RECEIPT_SCHEMA_VERSION, FORGE_EVALUATION_RECEIPT_SCHEMA_VERSION, FORGE_MODEL_CARD_SCHEMA_VERSION } = require(path.join(out, 'services/forgeTrainingReceipt.js'));
@@ -754,4 +756,18 @@ const preconditions = checkQualificationPreconditions(blockedInput);
 assert.equal(preconditions.length, 11, 'must check all 11 preconditions from the evidence doc');
 assert.ok(preconditions.some((p) => p.id === 'practice_run_authorized' && !p.met), 'practice_run_authorized precondition must be unmet when not authorized');
 
-console.log('frontend core regressions: 165 assertions passed');
+// --- Deterministic clock regression (determinism seam) ---
+detClock.disableDeterministicMode();
+assert.equal(typeof detClock.now(), 'number', 'clock now() must return a number in production mode');
+detClock.enableDeterministicMode(1000);
+assert.equal(detClock.now(), 1000, 'deterministic clock must pin to the initial value');
+detClock.tick(7);
+assert.equal(detClock.now(), 1007, 'tick must advance the deterministic clock');
+assert.equal(detClock.uniqueId('TR'), 'TR-1', 'uniqueId must be deterministic and counter-based');
+assert.equal(detClock.uniqueId('TR'), 'TR-2', 'uniqueId sequence must be monotonic');
+detClock.enableDeterministicMode(1000);
+assert.equal(detClock.uniqueId('TR'), 'TR-1', 're-enabled deterministic mode must reproduce the id sequence');
+assert.equal(detClock.isoTimestamp(), new Date(1000).toISOString(), 'isoTimestamp must reflect the pinned instant');
+detClock.disableDeterministicMode();
+
+console.log('frontend core regressions: 172 assertions passed');

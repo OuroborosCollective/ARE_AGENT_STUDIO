@@ -26,6 +26,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { isoTimestamp } from './deterministicClock';
 
 // ---------------------------------------------------------------------------
 // Schema versions
@@ -275,7 +276,7 @@ export class ForgeTrajectoryStore {
       const existingId = this.requestIndex.get(input.requestId)!;
       const receiptBody = {
         receipt_version: FORGE_TRAJECTORY_RECEIPT_VERSION,
-        accepted_at: new Date().toISOString(),
+        accepted_at: isoTimestamp(),
         request_id: input.requestId,
         record_id: existingId,
         duplicate: true,
@@ -331,7 +332,7 @@ export class ForgeTrajectoryStore {
     // Generate receipt
     const receiptBody = {
       receipt_version: FORGE_TRAJECTORY_RECEIPT_VERSION,
-      accepted_at: new Date().toISOString(),
+      accepted_at: isoTimestamp(),
       request_id: input.requestId,
       record_id: record.record_id,
       duplicate: false,

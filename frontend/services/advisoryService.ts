@@ -1,5 +1,6 @@
 import type { GameArchetype, TacticalRule } from '../types';
 import { globalServerGateway } from './serverSyncGateway';
+import { now as clockNow } from './deterministicClock';
 
 export interface VisionAnalysisResult {
   gameState: 'COMBAT' | 'FARMING' | 'RETREAT' | 'MENU' | 'BOSS_FIGHT';
@@ -70,7 +71,7 @@ export async function synthesizePlaybookRules(recordedEventsSummary: string, gen
   return parsed.map((item, idx) => {
     if (!item || typeof item.condition !== 'string' || typeof item.actionDirective !== 'string' || !phases.has(item.gamePhase)) throw new Error(`Invalid advisory rule at index ${idx}`);
     return {
-      id: typeof item.id === 'string' && item.id ? item.id : `advisory-${Date.now()}-${idx}`,
+      id: typeof item.id === 'string' && item.id ? item.id : `advisory-${clockNow()}-${idx}`,
       condition: item.condition,
       gamePhase: item.gamePhase,
       actionDirective: item.actionDirective,

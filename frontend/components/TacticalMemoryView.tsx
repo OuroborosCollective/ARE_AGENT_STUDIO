@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GameArchetype, TacticalRule } from '../types';
 import { analyzeGameplayFrameWithAdvisory } from '../services/advisoryService';
+import { uniqueId as clockUniqueId } from '../services/deterministicClock';
 import {
   Sparkles,
   Brain,
@@ -59,7 +60,7 @@ export const TacticalMemoryView: React.FC<TacticalMemoryViewProps> = ({
   const handleAdoptAIRecommendation = () => {
     if (!aiAnalysisResult) return;
     const rule: TacticalRule = {
-      id: `TR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: clockUniqueId('TR'),
       condition: `Phase == ${aiAnalysisResult.gameState} AND Enemies >= ${aiAnalysisResult.enemiesCount}`,
       gamePhase: aiAnalysisResult.gameState,
       actionDirective: aiAnalysisResult.recommendedDirective,
@@ -76,7 +77,7 @@ export const TacticalMemoryView: React.FC<TacticalMemoryViewProps> = ({
     e.preventDefault();
     if (!newCondition || !newDirective) return;
     const rule: TacticalRule = {
-      id: `TR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: clockUniqueId('TR'),
       condition: newCondition,
       gamePhase: newPhase,
       actionDirective: newDirective,

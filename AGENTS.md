@@ -99,6 +99,9 @@ python scripts/test_hf_presentation.py
 # Truth-path scan (prototype evidence fallbacks)
 node scripts/truth_scan.mjs
 
+# Determinism scan (forbids Date.now / new Date / Math.random outside the clock module)
+node scripts/determinism_scan.mjs
+
 # Forge architecture guard (visual-path isolation)
 node scripts/forge_truth_guard.mjs
 
@@ -167,3 +170,8 @@ No external secrets are required to boot. The optional advisory AI gateway (`ADV
 
 - Frontend: `curl http://localhost:3000` returns the Vite-served React app.
 - Backend health: `curl http://localhost:3000/api/v1/health` returns JSON.
+
+### Determinism & responsive layout
+
+- All wall-clock time and unique identifiers route through the central deterministic clock modules (`frontend/services/deterministicClock.ts`, `backend/src/deterministicClock.js`, `forge-runner/deterministicClock.js`). In production they return real time (provenance preserved); in tests `enableDeterministicMode()` pins a monotonic counter for reproducibility. `scripts/determinism_scan.mjs` fails CI if any non-test, non-frozen source calls `Date.now`, `new Date`, or `Math.random` directly. `performance.now` is allowed (measurement/animation only).
+- `frontend/hooks/useDeviceDetect.ts` classifies the viewport (phone/tablet/desktop) and drives the responsive layout. The Navbar shows a mobile mode `<select>` below the `lg` breakpoint (the desktop button row is hidden there); the device canvas scales with `max-w` so it never overflows small phones.

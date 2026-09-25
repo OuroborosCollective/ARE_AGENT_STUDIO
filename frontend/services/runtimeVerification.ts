@@ -4,13 +4,14 @@ import { GENRE_KNOWLEDGE_SCHEMAS } from '../constants';
 import { NeuralPolicyEngine, globalNeuralPolicy } from './neuralPolicyEngine';
 import { globalServerGateway } from './serverSyncGateway';
 import { telemetryToDatasetRows } from './datasetCodec';
+import { now as clockNow } from './deterministicClock';
 
 function result(id: string, title: string, category: TestCaseResult['category'], assertionsPassed: number, assertionsTotal: number, details: string, started: number): TestCaseResult {
   return {
     id, title, category,
     status: assertionsPassed === assertionsTotal ? 'PASSED' : 'FAILED',
     durationMs: Number((performance.now() - started).toFixed(3)),
-    assertionsPassed, assertionsTotal, details, timestamp: Date.now(),
+    assertionsPassed, assertionsTotal, details, timestamp: clockNow(),
   };
 }
 

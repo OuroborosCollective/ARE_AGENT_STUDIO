@@ -19,7 +19,8 @@ import {
   Terminal,
   Gamepad2,
   Server,
-  ShieldCheck
+  ShieldCheck,
+  Gauge
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -65,10 +66,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-emerald-300 text-lg tracking-wider">
-                  ARE AGENT STUDIO<span className="text-white text-xs px-1.5 py-0.5 ml-1.5 bg-emerald-950/80 border border-emerald-500/40 rounded font-mono font-normal">APEX VLA LAB</span>
+                  ARE AGENT STUDIO<span className="hidden sm:inline text-white text-xs px-1.5 py-0.5 ml-1.5 bg-emerald-950/80 border border-emerald-500/40 rounded font-mono font-normal">APEX VLA LAB</span>
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-mono flex items-center gap-2">
+              <p className="hidden sm:flex text-[11px] text-slate-400 font-mono items-center gap-2">
                 <span>EXPERIMENTAL VISUAL CONTROL STUDIO</span>
                 <span className="text-emerald-400">● RECEIPT-BOUND CLAIMS</span>
               </p>
@@ -203,6 +204,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <button
+              onClick={() => onSelectMode(SystemMode.CALIBRATION_BENCHMARK)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                activeMode === SystemMode.CALIBRATION_BENCHMARK
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <Gauge className="w-3.5 h-3.5" />
+              <span>Benchmark</span>
+            </button>
+
+            <button
               onClick={() => onSelectMode(SystemMode.TERMINAL_CLI)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 activeMode === SystemMode.TERMINAL_CLI
@@ -271,6 +284,32 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
+        </div>
+
+        {/* Mobile mode selector — visible below the desktop nav breakpoint */}
+        <div className="lg:hidden pb-3 pt-1">
+          <label className="sr-only" htmlFor="are-mobile-mode">Studio mode</label>
+          <select
+            id="are-mobile-mode"
+            value={activeMode}
+            onChange={(e) => onSelectMode(e.target.value as SystemMode)}
+            className="w-full signal-input border rounded-lg px-3 py-2 text-sm text-slate-100 font-mono focus:outline-none"
+          >
+            <option value={SystemMode.OBSERVE_RECORD}>1. Observe &amp; Record</option>
+            <option value={SystemMode.GENRE_KNOWLEDGE}>2. Genre Logic</option>
+            <option value={SystemMode.TACTICAL_MEMORY}>3. Tactical Memory</option>
+            <option value={SystemMode.POLICY_TRAINING}>4. Policy Training</option>
+            <option value={SystemMode.DAGGER_ACTIVE_LEARNING}>5. DAgger Learning</option>
+            <option value={SystemMode.OPERATION_CORRECTION_LEARNING}>6. Ops Correction</option>
+            <option value={SystemMode.AUTONOMOUS_AGENT}>7. Autonomous Agent</option>
+            <option value={SystemMode.RUNTIME_VERIFICATION}>Runtime Verification</option>
+            <option value={SystemMode.UNIVERSAL_DATASET_SERVER}>Dataset Server</option>
+            <option value={SystemMode.PLAYSTYLE_PROFILER}>Playstyle Profiler</option>
+            <option value={SystemMode.CALIBRATION_BENCHMARK}>Calibration Benchmark</option>
+            <option value={SystemMode.TERMINAL_CLI}>Terminal CLI</option>
+            <option value={SystemMode.CODEBASE_EXPORT}>Codebase Export</option>
+            <option value={SystemMode.FORGE_CONTROL_ROOM}>Forge Control Room</option>
+          </select>
         </div>
       </div>
     </header>
