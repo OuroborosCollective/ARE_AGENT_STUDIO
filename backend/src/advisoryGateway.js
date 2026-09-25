@@ -27,8 +27,13 @@ export function createAdvisoryGateway(options = {}) {
     try {
       parsedEndpoint = new URL(endpoint);
       if (!['https:', 'http:'].includes(parsedEndpoint.protocol)) throw new Error('unsupported protocol');
-    } catch {
-      throw advisoryError('ADVISORY_API_URL must be a fixed http(s) URL configured on the backend', 'ADVISORY_CONFIG_INVALID');
+    } catch (cause) {
+      // A misconfigured advisory URL must degrade the optional advisory feature
+      // to disabled. Throwing here (the previous behaviour) crashed the entire
+      // dataset daemon at boot and made the request-level ADVISORY_CONFIG_INVALID
+      // -> 422 mapping unreachable dead code.
+      console.warn(`[advisory] ADVISORY_API_URL is invalid (${cause?.message || cause}); advisory disabled`);
+      parsedEndpoint = null;
     }
   }
 
@@ -47,11 +52,19 @@ export function createAdvisoryGateway(options = {}) {
       const headers = { 'content-type': 'application/json' };
       if (token) headers.authorization = `Bearer ${token}`;
 
-      const response = await fetchImpl(parsedEndpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ model, messages: [{ role: 'user', content }], temperature: 0 }),
-      });
+      let response;
+      try {
+        response = await fetchImpl(parsedEndpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ model, messages: [{ role: 'user', content }], temperature: 0 }),
+        });
+      } catch (cause) {
+        // A transport-level failure (DNS, connection refused, timeout) is a
+        // bad-gateway condition, not a client error. Previously this surfaced as
+        // an uncoded Error and was mapped to 400.
+        throw advisoryError(`advisory provider is unreachable: ${cause?.message || cause}`, 'ADVISORY_PROVIDER_ERROR');
+      }
       const raw = await response.text();
       let payload;
       try { payload = JSON.parse(raw); }

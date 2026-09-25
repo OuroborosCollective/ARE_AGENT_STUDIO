@@ -135,7 +135,7 @@ export const TacticalMemoryView: React.FC<TacticalMemoryViewProps> = ({
                   {aiAnalysisResult.gameState}
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
-                  HP: {aiAnalysisResult.hpEstimated}% • Mana: {aiAnalysisResult.manaEstimated}% • Hostiles: {aiAnalysisResult.enemiesCount}
+                  Advisory est. — HP: {aiAnalysisResult.hpEstimated}% • Mana: {aiAnalysisResult.manaEstimated}% • Hostiles: {aiAnalysisResult.enemiesCount}
                 </span>
               </div>
               <button

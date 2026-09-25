@@ -61,7 +61,11 @@ test('ADB bridge is opt-in and uses fixed execFile arguments only', async () => 
   assert.equal(result.px_y, 50);
   assert.deepEqual(calls[0][0], 'adb');
   assert.deepEqual(calls[0][1], ['-s', 'device-1', 'shell', 'input', 'tap', '50', '50']);
-  await assert.rejects(() => adb.injectTap({ serial: 'device-1;rm -rf /', x: 0.5, y: 0.5, width: 100, height: 200 }), /allowlisted/);
+  // A serial with shell metacharacters is rejected as malformed input (422)
+  // before any adb call is made; it is no longer conflated with "not allowlisted".
+  await assert.rejects(() => adb.injectTap({ serial: 'device-1;rm -rf /', x: 0.5, y: 0.5, width: 100, height: 200 }), /non-secret reference/);
+  // A well-formed but non-allowlisted serial is still denied (403).
+  await assert.rejects(() => adb.injectTap({ serial: 'device-2', x: 0.5, y: 0.5, width: 100, height: 200 }), /allowlisted/);
 });
 
 
