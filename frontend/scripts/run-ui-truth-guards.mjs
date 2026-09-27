@@ -97,4 +97,11 @@ assert.match(taskContext, /Voraussetzung/, 'task context must expose prerequisit
 assert.match(taskContext, /Ergebnis/, 'task context must expose outcomes');
 assert.match(taskContext, /Weiter/, 'task context must explain the next workflow step');
 assert.match(taskContext, /Schritt/, 'core workflows must expose their stage context');
-console.log('frontend UI truth guards: 74 assertions passed');
+assert.match(shell, /Geist:wght@400;450;500;600;650;700/, 'Stitch typography must load Geist');
+assert.match(shell, /Material\+Symbols\+Outlined/, 'Stitch screens use the Material Symbols icon language');
+assert.match(navbar, /fixed top-0 inset-x-0 z-50/, 'mobile shell navigation must use the Stitch compact fixed header');
+assert.match(navbar, /h-16 grid grid-cols-5/, 'mobile shell must have exactly one five-item bottom navigation');
+assert.match(navbar, /Advanced/, 'advanced tools must remain explicitly reachable without being a primary nav item');
+assert.match(mobileHome, /stitch-stage-rail/, 'Home must use the Stitch sequential stage rail');
+assert.match(mobileHome, /Current State/, 'Home must expose the Stitch compact current-state section');
+console.log('frontend UI truth guards: 81 assertions passed');
