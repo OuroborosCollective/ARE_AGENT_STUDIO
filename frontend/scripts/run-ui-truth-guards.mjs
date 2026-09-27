@@ -13,6 +13,8 @@ const app = fs.readFileSync(path.join(root, 'App.tsx'), 'utf8');
 const shell = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const entry = fs.readFileSync(path.join(root, 'index.tsx'), 'utf8');
 const packageJson = fs.readFileSync(path.join(root, 'package.json'), 'utf8');
+const navbar = fs.readFileSync(path.join(root, 'components', 'Navbar.tsx'), 'utf8');
+const mobileHome = fs.readFileSync(path.join(root, 'components', 'MobileHome.tsx'), 'utf8');
 
 assert.doesNotMatch(operationStudio, /Verified deterministic candidate projection/, 'an unsigned readback must not be presented as verified');
 assert.match(operationStudio, /returned by the configured daemon/, 'candidate reads must be attributed to their configured daemon');
@@ -52,4 +54,4 @@ assert.match(observationRecorder, /\? '—'/, 'unknown/absent values must render
 assert.match(tacticalMemory, /Advisory est\./, 'advisory HP/Mana/Hostiles must be qualified as estimates, not observed game-state facts');
 assert.doesNotMatch(tacticalMemory, />\s*HP: \{aiAnalysisResult\.hpEstimated\}%/, 'advisory HP must not be rendered as a bare observed fact');
 
-console.log('frontend UI truth guards: 31 assertions passed');
+console.log('frontend UI truth guards: 46 assertions passed');

@@ -24,6 +24,7 @@ import { globalNeuralPolicy } from './services/neuralPolicyEngine';
 import { globalServerGateway } from './services/serverSyncGateway';
 import { now as clockNow, uniqueId as clockUniqueId } from './services/deterministicClock';
 import { Navbar } from './components/Navbar';
+import { MobileHome } from './components/MobileHome';
 import { DeviceCanvas } from './components/DeviceCanvas';
 import { ObservationRecorder } from './components/ObservationRecorder';
 import { GenreKnowledgeMatrix } from './components/GenreKnowledgeMatrix';
@@ -43,6 +44,7 @@ import { useDeviceDetect } from './hooks/useDeviceDetect';
 
 export default function App() {
   const [activeMode, setActiveMode] = useState<SystemMode>(SystemMode.OBSERVE_RECORD);
+  const [isHome, setIsHome] = useState(true);
   const [device, setDevice] = useState<DeviceConfig>(DEFAULT_DEVICE);
   const [gameArchetype, setGameArchetype] = useState<GameArchetype>(GameArchetype.FPS);
   const viewport = useDeviceDetect();
@@ -80,6 +82,11 @@ export default function App() {
   const injectionInFlightRef = useRef(false);
   const [agentPrediction, setAgentPrediction] = useState<AgentPrediction | null>(null);
   const [gamePhase, setGamePhase] = useState<string>('COMBAT');
+
+  const handleSelectMode = useCallback((mode: SystemMode) => {
+    setActiveMode(mode);
+    setIsHome(false);
+  }, []);
 
   // Global Killswitch listener (ESC key)
   useEffect(() => {
@@ -263,9 +270,13 @@ export default function App() {
       {/* Top Navigation */}
       <Navbar
         activeMode={activeMode}
-        onSelectMode={setActiveMode}
+        onSelectMode={handleSelectMode}
+        isHome={isHome}
+        onOpenHome={() => setIsHome(true)}
         device={device}
         isAgentRunning={isAgentRunning}
+        actionBridgeArmed={actionBridgeArmed}
+        publicationAllowed={publicationAllowed}
         onTriggerKillswitch={() => {
           setIsAgentRunning(false);
           setActionBridgeArmed(false);
@@ -277,7 +288,17 @@ export default function App() {
       />
 
       {/* Main Studio Viewport */}
-      <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${viewport.isPhone ? 'py-4' : 'py-6'}`}>
+      <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${viewport.isPhone ? 'py-4 pb-24' : 'py-6'}`}>
+        {isHome ? (
+          <MobileHome
+            device={device}
+            isAgentRunning={isAgentRunning}
+            actionBridgeArmed={actionBridgeArmed}
+            recordedFrameCount={recordedTelemetries.length}
+            publicationAllowed={publicationAllowed}
+            onSelectMode={handleSelectMode}
+          />
+        ) : (
         <div className={`grid grid-cols-1 lg:grid-cols-12 ${viewport.isCompact ? 'gap-6' : 'gap-8'} items-start`}>
 
           {/* Left Column: Real Phone Screen Canvas Receiver */}
@@ -408,6 +429,7 @@ export default function App() {
           </div>
 
         </div>
+        )}
       </main>
     </div>
   );
