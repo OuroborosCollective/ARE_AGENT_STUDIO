@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Compass, Database, Gauge, ShieldCheck, Sparkles, Terminal, Zap } from 'lucide-react';
+import { ArrowRight, Compass, Database, Gauge, ShieldCheck, Sparkles, Terminal, Zap, Radio, Gamepad2, UserCheck, Activity } from 'lucide-react';
 import { SystemMode } from '../types';
 
 type Context = {
@@ -14,54 +14,106 @@ type Context = {
 };
 
 const contexts: Record<SystemMode, Context> = {
-  [SystemMode.OBSERVE_RECORD]: { area: 'Capture', stage: 1, title: 'Observe & Record', purpose: 'Spielscreen verbinden und echte menschliche Aktionen als Demonstrationen erfassen.', prerequisite: 'Eine verfügbare Browser- oder Videoquelle.', outcome: 'Frame-/Action-Paare für weitere Lernschritte.', next: 'Danach: Learn', icon: Compass },
-  [SystemMode.GENRE_KNOWLEDGE]: { area: 'Learn', stage: 2, title: 'Genre Logic', purpose: 'Spieltyp, Kontrollmuster und typische Entscheidungsstrukturen einordnen.', prerequisite: 'Ein ausgewähltes Game-Genre.', outcome: 'Kontext für Regeln und Policy-Arbeit.', next: 'Danach: Tactical Memory', icon: Sparkles },
-  [SystemMode.TACTICAL_MEMORY]: { area: 'Learn', stage: 2, title: 'Tactical Memory', purpose: 'Regeln und taktische Hinweise sichtbar prüfen und organisieren.', prerequisite: 'Genre-Kontext oder vorhandene Regeln.', outcome: 'Ein lesbarer Playbook-Kontext.', next: 'Danach: Policy Training', icon: Sparkles },
-  [SystemMode.POLICY_TRAINING]: { area: 'Learn', stage: 2, title: 'Policy Training', purpose: 'Aus beobachteten Frame-/Action-Paaren die lokale Policy trainieren.', prerequisite: 'Beobachtete, vollständige Trainingspaare.', outcome: 'Aktualisierte lokale Policy-Gewichte.', next: 'Danach: DAgger', icon: Sparkles },
-  [SystemMode.DAGGER_ACTIVE_LEARNING]: { area: 'Learn', stage: 2, title: 'DAgger Learning', purpose: 'Menschliche Korrekturen erfassen und für die nächste Lernrunde auswerten.', prerequisite: 'Frame-gebundene menschliche Korrekturen.', outcome: 'Korrekturproben für die Lernschleife.', next: 'Danach: Playstyle oder Run', icon: Sparkles },
-  [SystemMode.PLAYSTYLE_PROFILER]: { area: 'Learn', stage: 2, title: 'Playstyle', purpose: 'Reaktionscadence und weitere Verhaltensparameter explizit konfigurieren.', prerequisite: 'Ein ausgewähltes Research-Profil.', outcome: 'Konfigurierter Reaktions-Takt für den aktiven Loop.', next: 'Danach: Run', icon: Sparkles },
-  [SystemMode.AUTONOMOUS_AGENT]: { area: 'Run', stage: 3, title: 'Autonomous Agent', purpose: 'Policy-Vorhersagen beobachten und Android-Ausgabe getrennt davon ausführen.', prerequisite: 'Konfiguriertes Zielgerät; ADB bleibt separat disarmed.', outcome: 'Vorhersage oder ausdrücklich bestätigte Device-Ausgabe.', next: 'Danach: Verify Runtime', icon: Zap },
-  [SystemMode.RUNTIME_VERIFICATION]: { area: 'Run', stage: 3, title: 'Runtime Verification', purpose: 'Deterministische Prüfungen und Live-Readbacks getrennt auswerten.', prerequisite: 'Lauffähiger Studio-/Daemon-Kontext.', outcome: 'Messbare Integritäts- und Laufzeitresultate.', next: 'Danach: Benchmark', icon: Gauge },
-  [SystemMode.CALIBRATION_BENCHMARK]: { area: 'Run', stage: 3, title: 'Calibration Benchmark', purpose: 'Gerät, Auflösung und Inferenzkennwerte messen.', prerequisite: 'Geräteparameter oder lokaler Runtime-Kontext.', outcome: 'Messwerte für die Konfiguration.', next: 'Danach: Evidence', icon: Gauge },
-  [SystemMode.UNIVERSAL_DATASET_SERVER]: { area: 'Evidence', stage: 4, title: 'Dataset Sync', purpose: 'Beobachtete Daten über einen verifizierten Receipt-Pfad synchronisieren.', prerequisite: 'Vollständige beobachtete Frame-/Action-Paare und erreichbarer Daemon.', outcome: 'Receipt-gebundene Synchronisation.', next: 'Danach: Forge Control Room', icon: Database },
-  [SystemMode.FORGE_CONTROL_ROOM]: { area: 'Evidence', stage: 4, title: 'Forge Control Room', purpose: 'Externe Runs, Provenienz, Reconciliation und Publication-Status nachvollziehen.', prerequisite: 'Ein autorisierter Run oder ein vorhandener Readmodel-Kontext.', outcome: 'Nachvollziehbarer Evidence-Status.', next: 'Danach: Review / Publish Gate', icon: ShieldCheck },
-  [SystemMode.OPERATION_CORRECTION_LEARNING]: { area: 'Advanced', title: 'Ops Correction Learning', purpose: 'Eigene Betriebsentscheidungen und Korrekturen als getrennte Lernspur prüfen.', prerequisite: 'Owner-Kontext und vorhandene Kandidaten.', outcome: 'Nicht-ausführende Korrektur-/Lernkandidaten.', next: 'Technische Prüfung fortsetzen', icon: ShieldCheck },
-  [SystemMode.TERMINAL_CLI]: { area: 'Advanced', title: 'Terminal CLI', purpose: 'Technische Diagnose und direkte Kommandoausführung für erfahrene Nutzer.', prerequisite: 'Technischer Runtime-Kontext.', outcome: 'Direkte Diagnoseausgabe.', next: 'Nach der Diagnose zurück zum passenden Arbeitsbereich', icon: Terminal },
-  [SystemMode.CODEBASE_EXPORT]: { area: 'Advanced', title: 'Codebase Export', purpose: 'Den relevanten Quellstand für Analyse oder Weitergabe exportieren.', prerequisite: 'Zugriff auf den aktuellen Codebestand.', outcome: 'Expliziter Codeexport.', next: 'Danach: passend zum Arbeitsziel zurückkehren', icon: Terminal },
+  [SystemMode.OBSERVE_RECORD]: { area: 'Capture', stage: 1, title: 'Observe & Record', purpose: 'Echtbild beobachten und menschliche Aktionen als Demonstrationen erfassen.', prerequisite: 'Verfügbare Screen-/Videoquelle.', outcome: 'Frame-/Action-Paare für Learn.', next: 'Stage 02 · Learn', icon: Radio },
+  [SystemMode.GENRE_KNOWLEDGE]: { area: 'Learn', stage: 2, title: 'Genre Logic', purpose: 'Spieltyp und Kontrollmuster als Trainingskontext einordnen.', prerequisite: 'Ein ausgewähltes Genre.', outcome: 'Genre-Kontext für Regeln und Policy.', next: 'Tactical Memory', icon: Gamepad2 },
+  [SystemMode.TACTICAL_MEMORY]: { area: 'Learn', stage: 2, title: 'Tactical Memory', purpose: 'Regeln und taktische Hinweise strukturiert prüfen.', prerequisite: 'Genre-Kontext oder vorhandene Regeln.', outcome: 'Lesbarer Playbook-Kontext.', next: 'Policy Training', icon: Sparkles },
+  [SystemMode.POLICY_TRAINING]: { area: 'Learn', stage: 2, title: 'Policy Training', purpose: 'Beobachtete Frame-/Action-Paare für lokale Policy-Arbeit verwenden.', prerequisite: 'Vollständige beobachtete Trainingspaare.', outcome: 'Trainingsfortschritt und Checkpoint-Kandidaten.', next: 'DAgger', icon: Sparkles },
+  [SystemMode.DAGGER_ACTIVE_LEARNING]: { area: 'Learn', stage: 2, title: 'DAgger Corrections', purpose: 'Menschliche Korrekturen frame-gebunden in die Lernschleife zurückführen.', prerequisite: 'Frame-gebundene Korrekturen.', outcome: 'Korrekturproben für weiteres Training.', next: 'Playstyle oder Run', icon: UserCheck },
+  [SystemMode.PLAYSTYLE_PROFILER]: { area: 'Learn', stage: 2, title: 'Playstyle Profiler', purpose: 'Reaktionscadence und Spielprofil explizit konfigurieren.', prerequisite: 'Ausgewähltes Profil.', outcome: 'Konfigurierter Reaktions-Takt.', next: 'Stage 03 · Run', icon: UserCheck },
+  [SystemMode.AUTONOMOUS_AGENT]: { area: 'Run', stage: 3, title: 'Agent Runtime', purpose: 'Policy-Prädiktionen beobachten und Device-Ausgabe separat autorisieren.', prerequisite: 'Zielgerät konfiguriert; ADB zunächst OFF.', outcome: 'Dry-Run oder ausdrücklich autorisierte Touch-Ausgabe.', next: 'Verify Runtime', icon: Zap },
+  [SystemMode.RUNTIME_VERIFICATION]: { area: 'Run', stage: 3, title: 'Verify Runtime', purpose: 'Deterministische Laufzeitresultate und Readbacks prüfen.', prerequisite: 'Lauffähiger Studio-Kontext.', outcome: 'Nachvollziehbare Integritätsresultate.', next: 'Benchmark', icon: ShieldCheck },
+  [SystemMode.CALIBRATION_BENCHMARK]: { area: 'Run', stage: 3, title: 'Benchmark', purpose: 'Gerät und Inferenzpfad messen.', prerequisite: 'Geräteparameter oder lokaler Runtime-Kontext.', outcome: 'Messwerte für die Konfiguration.', next: 'Stage 04 · Evidence', icon: Gauge },
+  [SystemMode.UNIVERSAL_DATASET_SERVER]: { area: 'Evidence', stage: 4, title: 'Audit & Receipts', purpose: 'Synchronisation, Laufzeitquittungen und Provenienz nachvollziehen.', prerequisite: 'Lokale Daten können unabhängig geprüft werden.', outcome: 'Receipt-gebundene Evidence-Sicht.', next: 'Forge Control Room', icon: Database },
+  [SystemMode.FORGE_CONTROL_ROOM]: { area: 'Evidence', stage: 4, title: 'Forge Control Room', purpose: 'Externe Runs, Provenienz und Publication-Status nachvollziehen.', prerequisite: 'Autorisierter Run oder vorhandener Readmodel-Kontext.', outcome: 'Nachvollziehbarer Evidence-Status.', next: 'Review / Publish Gate', icon: Activity },
+  [SystemMode.OPERATION_CORRECTION_LEARNING]: { area: 'Advanced', title: 'Ops Correction Learning', purpose: 'Eigene Betriebsentscheidungen als getrennte Lernspur prüfen.', prerequisite: 'Owner-Kontext und Kandidaten.', outcome: 'Nicht-ausführende Lernkandidaten.', next: 'Technische Prüfung fortsetzen', icon: ShieldCheck },
+  [SystemMode.TERMINAL_CLI]: { area: 'Advanced', title: 'Terminal CLI', purpose: 'Technische Diagnose und direkte Kommandoausführung.', prerequisite: 'Technischer Runtime-Kontext.', outcome: 'Diagnoseausgabe.', next: 'Zurück zum passenden Workspace', icon: Terminal },
+  [SystemMode.CODEBASE_EXPORT]: { area: 'Advanced', title: 'Codebase Export', purpose: 'Relevanten Quellstand explizit exportieren.', prerequisite: 'Zugriff auf den aktuellen Codebestand.', outcome: 'Expliziter Codeexport.', next: 'Zurück zum passenden Workspace', icon: Terminal },
 };
 
-export const TaskContextHeader: React.FC<{ activeMode: SystemMode }> = ({ activeMode }) => {
+const groupTools: Record<Context['area'], SystemMode[]> = {
+  Capture: [SystemMode.OBSERVE_RECORD],
+  Learn: [SystemMode.GENRE_KNOWLEDGE, SystemMode.TACTICAL_MEMORY, SystemMode.POLICY_TRAINING, SystemMode.DAGGER_ACTIVE_LEARNING, SystemMode.PLAYSTYLE_PROFILER],
+  Run: [SystemMode.AUTONOMOUS_AGENT, SystemMode.RUNTIME_VERIFICATION, SystemMode.CALIBRATION_BENCHMARK],
+  Evidence: [SystemMode.UNIVERSAL_DATASET_SERVER, SystemMode.FORGE_CONTROL_ROOM],
+  Advanced: [SystemMode.OPERATION_CORRECTION_LEARNING, SystemMode.TERMINAL_CLI, SystemMode.CODEBASE_EXPORT],
+};
+
+const toolLabels: Partial<Record<SystemMode, string>> = {
+  [SystemMode.OBSERVE_RECORD]: 'Observe & Record',
+  [SystemMode.GENRE_KNOWLEDGE]: 'Genre Logic',
+  [SystemMode.TACTICAL_MEMORY]: 'Tactical Memory',
+  [SystemMode.POLICY_TRAINING]: 'Policy Training',
+  [SystemMode.DAGGER_ACTIVE_LEARNING]: 'DAgger Corrections',
+  [SystemMode.PLAYSTYLE_PROFILER]: 'Playstyle',
+  [SystemMode.AUTONOMOUS_AGENT]: 'Agent Runtime',
+  [SystemMode.RUNTIME_VERIFICATION]: 'Verify Runtime',
+  [SystemMode.CALIBRATION_BENCHMARK]: 'Benchmark',
+  [SystemMode.UNIVERSAL_DATASET_SERVER]: 'Audit & Receipts',
+  [SystemMode.FORGE_CONTROL_ROOM]: 'Forge Control Room',
+};
+
+const toolIcon = (mode: SystemMode) => {
+  if (mode === SystemMode.OBSERVE_RECORD) return Radio;
+  if (mode === SystemMode.POLICY_TRAINING || mode === SystemMode.TACTICAL_MEMORY) return Sparkles;
+  if (mode === SystemMode.DAGGER_ACTIVE_LEARNING || mode === SystemMode.PLAYSTYLE_PROFILER) return UserCheck;
+  if (mode === SystemMode.AUTONOMOUS_AGENT) return Zap;
+  if (mode === SystemMode.RUNTIME_VERIFICATION) return ShieldCheck;
+  if (mode === SystemMode.CALIBRATION_BENCHMARK) return Gauge;
+  if (mode === SystemMode.UNIVERSAL_DATASET_SERVER) return Database;
+  return Activity;
+};
+
+export const TaskContextHeader: React.FC<{ activeMode: SystemMode; onSelectMode: (mode: SystemMode) => void }> = ({ activeMode, onSelectMode }) => {
   const context = contexts[activeMode];
   const Icon = context.icon;
+  const tools = groupTools[context.area];
 
   return (
-    <section className="mb-4 rounded-2xl border border-emerald-900/30 bg-[#0b1420]/78 p-4" aria-labelledby="task-context-title">
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-900/50 bg-cyan-500/10">
-          <Icon className="w-4 h-4 text-cyan-200" aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-cyan-300">{context.area}{context.stage ? ` · Schritt ${context.stage}/4` : ''}</span>
-            <h1 id="task-context-title" className="text-base sm:text-lg font-bold text-white">{context.title}</h1>
+    <section className="mb-4" aria-labelledby="task-context-title">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono-label text-mono-label uppercase tracking-widest text-ink-quiet">
+              Stage {context.stage ? String(context.stage).padStart(2, '0') : 'ADV'} // {context.area}
+            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-raised border border-structural-steel">
+                <Icon className="h-4 w-4 text-signal-teal" aria-hidden="true" />
+              </span>
+              <h1 id="task-context-title" className="font-workspace-title text-workspace-title text-ink-primary truncate">{context.title}</h1>
+            </div>
+            <p className="mt-1.5 max-w-[65ch] text-body-secondary text-ink-secondary">{context.purpose}</p>
           </div>
-          <p className="mt-1 text-xs sm:text-sm leading-5 text-slate-400">{context.purpose}</p>
+          {context.stage && <span className="font-mono-label text-mono-label text-ink-quiet shrink-0">STEP {context.stage}/4</span>}
         </div>
-      </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-3 text-[11px]">
-        <div className="rounded-xl border border-slate-800 bg-black/20 p-2.5">
-          <div className="font-mono uppercase text-[9px] tracking-wider text-slate-600">Voraussetzung</div>
-          <div className="mt-0.5 text-slate-300">{context.prerequisite}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="stitch-muted-surface rounded-lg px-3 py-2.5">
+            <p className="font-mono-label text-mono-label uppercase text-ink-quiet">Voraussetzung</p>
+            <p className="mt-1 text-body-secondary text-ink-secondary">{context.prerequisite}</p>
+          </div>
+          <div className="stitch-muted-surface rounded-lg px-3 py-2.5">
+            <p className="font-mono-label text-mono-label uppercase text-ink-quiet">Ergebnis</p>
+            <p className="mt-1 text-body-secondary text-ink-secondary">{context.outcome}</p>
+          </div>
+          <div className="stitch-muted-surface rounded-lg px-3 py-2.5">
+            <p className="font-mono-label text-mono-label uppercase text-ink-quiet">Weiter</p>
+            <p className="mt-1 inline-flex items-center gap-1.5 text-body-secondary text-ink-secondary"><ArrowRight className="h-3.5 w-3.5 text-signal-teal" aria-hidden="true" />{context.next}</p>
+          </div>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-black/20 p-2.5">
-          <div className="font-mono uppercase text-[9px] tracking-wider text-slate-600">Ergebnis</div>
-          <div className="mt-0.5 text-slate-300">{context.outcome}</div>
-        </div>
-        <div className="rounded-xl border border-slate-800 bg-black/20 p-2.5">
-          <div className="font-mono uppercase text-[9px] tracking-wider text-slate-600">Weiter</div>
-          <div className="mt-0.5 inline-flex items-center gap-1.5 text-cyan-200"><ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />{context.next}</div>
-        </div>
+
+        <nav aria-label={`Tools in ${context.area}`} className="flex gap-1.5 overflow-x-auto pb-1">
+          {tools.map((mode) => {
+            const ToolIcon = toolIcon(mode);
+            return (
+              <button key={mode} type="button" onClick={() => onSelectMode(mode)} aria-current={mode === activeMode ? 'page' : undefined}
+                className={`min-h-10 shrink-0 inline-flex items-center gap-1.5 px-3 rounded-lg border text-caption font-semibold whitespace-nowrap ${mode === activeMode ? 'border-signal-teal/30 bg-surface-raised text-signal-teal' : 'border-structural-steel bg-surface-deep text-ink-secondary hover:bg-surface-raised'}`}>
+                <ToolIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                {toolLabels[mode] ?? contexts[mode].title}
+              </button>
+            );
+          })}
+        </nav>
       </div>
     </section>
   );
