@@ -51,10 +51,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const selectMode = (mode: SystemMode) => { onSelectMode(mode); setAdvancedOpen(false); };
-  const activeGroup = (Object.keys(taskGroups) as Array<keyof typeof taskGroups>).find((key) => {
-    const modes = [taskGroups[key].defaultMode];
-    return modes.includes(activeMode as never);
-  });
+  const activeGroup = activeMode === SystemMode.OBSERVE_RECORD
+    ? 'capture'
+    : [SystemMode.GENRE_KNOWLEDGE, SystemMode.TACTICAL_MEMORY, SystemMode.POLICY_TRAINING, SystemMode.DAGGER_ACTIVE_LEARNING, SystemMode.PLAYSTYLE_PROFILER].includes(activeMode)
+      ? 'learn'
+      : [SystemMode.AUTONOMOUS_AGENT, SystemMode.RUNTIME_VERIFICATION, SystemMode.CALIBRATION_BENCHMARK].includes(activeMode)
+        ? 'run'
+        : [SystemMode.UNIVERSAL_DATASET_SERVER, SystemMode.FORGE_CONTROL_ROOM].includes(activeMode)
+          ? 'evidence'
+          : undefined;
 
   return (
     <>
