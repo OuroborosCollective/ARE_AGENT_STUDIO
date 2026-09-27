@@ -256,3 +256,23 @@ Evidence: Backend 35 tests pass (3 new). Frontend core 165 assertions pass (23 n
 Learned: The ID collision pattern `Date.now().toString().slice(-4)` is a classic bug family generator — the truncation creates a small keyspace that cascades into deletion, rendering, and data-integrity Folgefehler. The async WebCrypto SHA-256 pattern (globalThis.crypto.subtle.digest) is the canonical hashing approach for self-contained forge modules in the esbuild-compiled test runner.
 Open: Issue #20 remains BLOCKED — no real Forge practice run is available. The Baugrundstück module is scaffolding only; it produces evidence bundles with UNOBSERVABLE/UNPROVABLE fields until a real run is executed.
 Next safe step: Await practice run availability or owner authorization to unblock #20 execution.
+
+
+### 2026-09-27 — Android APK packaging + Hatchable owner admin readback
+Status: VERIFIED
+Task: Validate the current ARE Agent Studio mainline, add a reproducible Android APK packaging workflow, and surface CI/APK/release state in the Hatchable owner admin area.
+Decisions:
+- Keep the existing React/Vite frontend as canonical and package its built output inside a minimal native Android WebView shell; do not introduce Capacitor or move ARE control/evidence ownership.
+- Treat the APK as a client shell only. The existing Android ADB bridge remains a separate backend capability; the APK does not claim local ADB execution.
+- Pin AGP 9.4.0 with Gradle 9.6.0 and JDK 17; use compile/target SDK 36 and a reproducible GitHub Actions artifact named `are-agent-studio-apk`.
+- Hatchable admin access uses the platform owner/admin gate. No app-level payment or subscription gate is introduced; admin state is explicitly free-use in the app surface.
+Touched surfaces: .github/workflows/android-apk.yml, android/, Hatchable public/admin.html, Hatchable api/admin/status.js, Hatchable public/index.html.
+Evidence:
+- Main `e92a01e36f95738373c179c21748f518124b74e1` had successful CI run `36120290355` and CodeQL run `36120290283`.
+- PR #33 head `a4f5bf3c9c5de61fe0ac50c5c0f34ad478740339`: CI verify, CodeQL and Android `build-apk` all completed successfully.
+- Android workflow run `36344158715`, job `108689881058`: frontend build, Android SDK setup, APK build, APK existence/hash verification and artifact upload all passed.
+- Artifact `are-agent-studio-apk` id `10939203708`, 2.87 MB, digest `sha256:5ac75ef6fc0e38b504777136bfb724051e240c41030a747886b76cfb6c188546`, not expired.
+- Hatchable v2 deploy is live with 10 files and 1 admin API function; admin route readback returns HTTP 200 for `as:admin`, 403 for `as:member`, and 401 for `as:public`. Real preview HTML returns HTTP 200 with the expected Admin, hero and evidence surfaces.
+Learned: The repository has no native Android/Capacitor project, but its existing frontend can be packaged reproducibly without changing ARE's evidence boundaries. A hosted APK shell must remain explicit about the missing local backend/ADB capability rather than implying device execution.
+Open: No durable GitHub Release exists yet; the current APK evidence is a workflow artifact.
+Next safe step: Merge PR #33 after the green checks, then deploy/update the Hatchable admin readback against main and decide separately whether a tagged signed release should be added.
