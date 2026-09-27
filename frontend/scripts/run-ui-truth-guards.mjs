@@ -15,6 +15,8 @@ const entry = fs.readFileSync(path.join(root, 'index.tsx'), 'utf8');
 const packageJson = fs.readFileSync(path.join(root, 'package.json'), 'utf8');
 const navbar = fs.readFileSync(path.join(root, 'components', 'Navbar.tsx'), 'utf8');
 const mobileHome = fs.readFileSync(path.join(root, 'components', 'MobileHome.tsx'), 'utf8');
+const statusNotice = fs.readFileSync(path.join(root, 'components', 'StatusNotice.tsx'), 'utf8');
+const playstyle = fs.readFileSync(path.join(root, 'components', 'PlaystyleProfiler.tsx'), 'utf8');
 
 assert.doesNotMatch(operationStudio, /Verified deterministic candidate projection/, 'an unsigned readback must not be presented as verified');
 assert.match(operationStudio, /returned by the configured daemon/, 'candidate reads must be attributed to their configured daemon');
@@ -54,4 +56,28 @@ assert.match(observationRecorder, /\? '—'/, 'unknown/absent values must render
 assert.match(tacticalMemory, /Advisory est\./, 'advisory HP/Mana/Hostiles must be qualified as estimates, not observed game-state facts');
 assert.doesNotMatch(tacticalMemory, />\s*HP: \{aiAnalysisResult\.hpEstimated\}%/, 'advisory HP must not be rendered as a bare observed fact');
 
-console.log('frontend UI truth guards: 46 assertions passed');
+
+
+
+// Interaction feedback guards (issue #37)
+const forbiddenNativeDialogs = [];
+function walkFiles(dir) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules' && entry.name !== 'dist' && entry.name !== '.core-test-build') walkFiles(fullPath);
+    else if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) {
+      const source = fs.readFileSync(fullPath, 'utf8');
+      if (/\b(?:alert|confirm|prompt)\s*\(/.test(source)) forbiddenNativeDialogs.push(path.relative(root, fullPath));
+    }
+  }
+}
+walkFiles(root);
+assert.deepEqual(forbiddenNativeDialogs, [], 'frontend product flows must not use browser alert/confirm/prompt');
+assert.match(statusNotice, /role=\{isError \? 'alert' : 'status'\}/, 'status feedback must use semantic live-region roles');
+assert.match(statusNotice, /aria-live=\{isError \? 'assertive' : 'polite'\}/, 'status feedback must announce with the correct urgency');
+assert.match(statusNotice, /Notice schließen/, 'status feedback must be dismissible when rendered persistently');
+assert.match(app, /<StatusNotice/, 'App must render shared status feedback');
+assert.match(playstyle, /<StatusNotice/, 'Playstyle save feedback must use the shared status surface');
+assert.match(playstyle, /aria-pressed=\{profile\.name === preset\.name\}/, 'playstyle presets must use semantic pressed buttons');
+console.log('frontend UI truth guards: 53 assertions passed');

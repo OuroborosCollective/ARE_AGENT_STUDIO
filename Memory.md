@@ -292,3 +292,17 @@ Evidence: Research synthesis used GhostUI (CHI 2026 / arXiv:2601.19258) for hidd
 Learned: Mobile complexity should be reduced by reorganizing the user's mental model, not by deleting advanced capability. Contextual disclosure plus explicit routing keeps novice orientation and expert reachability compatible.
 Open: Final green CI/CodeQL and post-merge APK rebuild remain required before marking the mobile UX block fully verified.
 Next safe step: Complete PR #36 gates, merge to main, rebuild the APK from the merged head, then perform the narrow mobile viewport/runtime check.
+
+### 2026-09-27 — Mobile UX feedback surface + native-dialog removal
+Status: VERIFIED — branch implementation; merge pending repository gates
+Task: Replace interruptive browser-native feedback with accessible in-app status messaging while preserving every existing workflow and truth boundary.
+Decisions:
+- Added shared StatusNotice feedback with success/info/warning/error semantics, stable geometry, dismissal, and semantic live-region roles.
+- Replaced Genre Logic and DAgger browser alerts with inline status feedback.
+- Replaced Playstyle save alert and changed profile presets from clickable divs to semantic pressed buttons.
+- Added a recursive UI guard that rejects alert/confirm/prompt usage anywhere in frontend TypeScript/TSX product code.
+Touched surfaces: frontend/components/StatusNotice.tsx, frontend/App.tsx, frontend/components/PlaystyleProfiler.tsx, frontend/scripts/run-ui-truth-guards.mjs, Memory.md.
+Evidence: Exact branch head 150768c54e15c239cc9587b6a34369ca8e9de059 contains the complete change set; PR #37 is the intended merge gate.
+Learned: Mobile feedback should acknowledge routine outcomes in place and reserve assertive alerts for actionable errors; semantic controls also make touch-first interactions more predictable and accessible.
+Open: Final CI, CodeQL and Android APK/release verification are pending on the final branch head.
+Next safe step: Complete PR #37 gates, merge only the exact tested head, then rebuild/publish the APK from main.

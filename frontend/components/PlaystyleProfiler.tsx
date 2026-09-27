@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PlaystyleProfile } from '../types';
 import { PLAYSTYLE_PROFILES } from '../constants';
+import { StatusNotice } from './StatusNotice';
 import {
   UserCheck,
   Sliders,
@@ -24,10 +25,11 @@ export const PlaystyleProfiler: React.FC<PlaystyleProfilerProps> = ({
   onUpdateProfile,
 }) => {
   const [profile, setProfile] = useState<PlaystyleProfile>(currentProfile);
+  const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
     onUpdateProfile(profile);
-    alert('Playstyle profile saved. Reaction-time cadence is applied to the agent loop; the other fields remain explicit research metadata until a measured adapter is implemented.');
+    setSaved(true);
   };
 
   return (
@@ -58,20 +60,25 @@ export const PlaystyleProfiler: React.FC<PlaystyleProfilerProps> = ({
         </div>
       </div>
 
+      <div className="min-h-12" aria-live="polite">
+        {saved && <StatusNotice kind="success" message="Playstyle profile gespeichert. Die Reaction-Time-Cadence wird im Agent-Loop verwendet; die übrigen Felder bleiben ausdrücklich Research-Metadaten." onDismiss={() => setSaved(false)} />}
+      </div>
+
       {/* Profile Presets Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {PLAYSTYLE_PROFILES.map((preset) => (
-          <div
+          <button
+            type="button"
             key={preset.name}
             onClick={() => {
               setProfile(preset);
               onSelectProfile(preset);
+              setSaved(false);
             }}
-            className={`p-5 rounded-2xl cursor-pointer border transition-all ${
-              profile.name === preset.name
-                ? 'bg-[#111726] border-purple-500 ring-2 ring-purple-500/30'
-                : 'bg-cyber-card border-cyber-border hover:border-slate-700'
-            }`}
+            aria-pressed={profile.name === preset.name}
+            className={profile.name === preset.name
+              ? 'w-full text-left p-5 rounded-2xl border transition-all focus-visible:outline-none bg-[#111726] border-purple-500 ring-2 ring-purple-500/30'
+              : 'w-full text-left p-5 rounded-2xl border transition-all focus-visible:outline-none bg-cyber-card border-cyber-border hover:border-slate-700'}
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-white">{preset.name}</span>
@@ -94,7 +101,7 @@ export const PlaystyleProfiler: React.FC<PlaystyleProfilerProps> = ({
                 <span className="text-cyan-300">{preset.cameraPanCadence}</span>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
