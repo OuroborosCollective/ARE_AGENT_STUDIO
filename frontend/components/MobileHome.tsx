@@ -11,29 +11,122 @@ interface MobileHomeProps {
   onSelectMode: (mode: SystemMode) => void;
 }
 
-const RouteCard = ({ icon: Icon, eyebrow, title, description, prerequisite, result, action, tone, onClick }: any) => (
-  <article className="rounded-2xl border border-emerald-900/30 bg-[#0b1420]/85 p-4 sm:p-5">
-    <div className="flex items-start gap-3"><span className={`w-11 h-11 rounded-xl flex items-center justify-center border ${tone}`}><Icon className="w-5 h-5" aria-hidden="true" /></span><div className="min-w-0"><p className="text-[10px] tracking-[0.18em] uppercase font-mono text-slate-500">{eyebrow}</p><h2 className="text-lg font-bold text-white mt-1">{title}</h2><p className="text-sm text-slate-400 mt-1 leading-6">{description}</p></div></div>
-    <dl className="mt-4 grid gap-2 text-[11px]"><div className="rounded-xl bg-black/20 border border-slate-800 p-2.5"><dt className="text-slate-600 font-mono uppercase">Voraussetzung</dt><dd className="text-slate-300 mt-0.5">{prerequisite}</dd></div><div className="rounded-xl bg-black/20 border border-slate-800 p-2.5"><dt className="text-slate-600 font-mono uppercase">Ergebnis</dt><dd className="text-slate-300 mt-0.5">{result}</dd></div></dl>
-    <button type="button" onClick={onClick} className="mt-4 w-full min-h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-100 font-semibold inline-flex items-center justify-center gap-2 hover:bg-emerald-500/20">{action}<ArrowRight className="w-4 h-4" aria-hidden="true" /></button>
+type StageProps = {
+  number: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  prerequisite: string;
+  result: string;
+  action: string;
+  icon: React.ComponentType<{ className?: string }>;
+  active: boolean;
+  onClick: () => void;
+};
+
+const Stage: React.FC<StageProps> = ({ number, eyebrow, title, description, prerequisite, result, action, icon: Icon, active, onClick }) => (
+  <article className={`relative flex items-start gap-3 rounded-xl border p-3.5 ${active ? 'bg-surface-raised border-structural-steel shadow-md' : 'bg-surface-deep border-structural-steel/80'}`}>
+    <span className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-mono-label text-caption font-bold ${active ? 'bg-signal-teal text-on-primary' : 'bg-surface-container text-ink-secondary'}`}>
+      {number}
+    </span>
+    <div className="min-w-0 flex-1 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className={`font-mono-label text-mono-label uppercase tracking-widest ${active ? 'text-signal-teal' : 'text-ink-quiet'}`}>{eyebrow}</p>
+          <div className="mt-0.5 flex items-center gap-2">
+            <Icon className="h-4 w-4 text-signal-teal shrink-0" aria-hidden="true" />
+            <h2 className="font-section-title text-section-title text-ink-primary">{title}</h2>
+          </div>
+        </div>
+        {active && <span className="font-mono-label text-mono-label text-ink-quiet shrink-0">ACTIVE</span>}
+      </div>
+      <p className="text-body-secondary text-ink-secondary">{description}</p>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        <div className="rounded bg-surface-deep border border-structural-steel px-2.5 py-2">
+          <p className="font-mono-label text-mono-label uppercase text-ink-quiet">Voraussetzung</p>
+          <p className="mt-0.5 text-caption text-ink-secondary">{prerequisite}</p>
+        </div>
+        <div className="rounded bg-surface-deep border border-structural-steel px-2.5 py-2">
+          <p className="font-mono-label text-mono-label uppercase text-ink-quiet">Ergebnis</p>
+          <p className="mt-0.5 text-caption text-ink-secondary">{result}</p>
+        </div>
+      </div>
+      <button type="button" onClick={onClick} className="stitch-cta min-h-12 w-full rounded-lg px-3 text-caption font-semibold inline-flex items-center justify-center gap-2">
+        {action}<ArrowRight className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </div>
   </article>
 );
 
-export const MobileHome: React.FC<MobileHomeProps> = ({ device, isAgentRunning, actionBridgeArmed, recordedFrameCount, publicationAllowed, onSelectMode }) => {
+export const MobileHome: React.FC<MobileHomeProps> = ({
+  device, isAgentRunning, actionBridgeArmed, recordedFrameCount, publicationAllowed, onSelectMode
+}) => {
   const readyForRun = device.connected && Boolean(device.serial);
-  return <section className="space-y-5 pb-8" aria-labelledby="home-title">
-    <div className="rounded-3xl border border-emerald-900/40 bg-gradient-to-br from-[#0b1720] via-[#0b111b] to-[#0a0d14] p-5 sm:p-7">
-      <p className="text-[10px] tracking-[0.2em] uppercase font-mono text-emerald-300">Start Here</p>
-      <div className="mt-2 flex items-start gap-4"><div className="min-w-0 flex-1"><h1 id="home-title" className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Was möchtest du tun?</h1><p className="mt-2 text-sm sm:text-base text-slate-400 leading-6 max-w-2xl">ARE Agent Studio führt von der echten Beobachtung über Lernen und Ausführung bis zur überprüfbaren Evidence-Kette. Der nächste Schritt bleibt sichtbar, während technische Details im passenden Arbeitsbereich erscheinen.</p></div><span className="hidden sm:flex w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 items-center justify-center shrink-0"><ShieldCheck className="w-6 h-6 text-cyan-300" aria-hidden="true" /></span></div>
-      <div className="mt-5 flex flex-wrap gap-2"><span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-slate-300 rounded-full px-2.5 py-1 border border-slate-800 bg-black/20"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />Prediction ≠ Device Output</span><span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-slate-300 rounded-full px-2.5 py-1 border border-slate-800 bg-black/20"><LockKeyhole className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />ADB separat</span><span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-slate-300 rounded-full px-2.5 py-1 border border-slate-800 bg-black/20"><Database className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />Receipts vor Claims</span></div>
-    </div>
-    <div className="grid sm:grid-cols-2 gap-3">
-      <RouteCard icon={Radio} eyebrow="1 · Beobachten" title="Capture" description="Einen echten Spielscreen verbinden und menschliche Aktionen als Demonstration aufzeichnen." prerequisite="Keine Gerätekontrolle nötig; die Quelle muss verfügbar sein." result={`${recordedFrameCount} aufgezeichnete Frames / Aktionen`} action="Capture öffnen" tone="text-emerald-200 bg-emerald-500/10 border-emerald-500/20" onClick={() => onSelectMode(SystemMode.OBSERVE_RECORD)} />
-      <RouteCard icon={Brain} eyebrow="2 · Verbessern" title="Learn" description="Genre, Tactical Memory, Policy Training, DAgger und Playstyle in einem Lernpfad." prerequisite="Beobachtete Frame-/Action-Paare verbessern das Training." result="Learn-Werkzeuge und Korrekturpfad" action="Learn öffnen" tone="text-cyan-200 bg-cyan-500/10 border-cyan-500/20" onClick={() => onSelectMode(SystemMode.POLICY_TRAINING)} />
-      <RouteCard icon={Zap} eyebrow="3 · Ausführen" title="Run" description="Policy zunächst als Vorschau und Android-Ausgabe nur separat sichtbar und bewusst armieren." prerequisite={readyForRun ? 'Gerät und Serial sind konfiguriert.' : 'Verbindung und erlaubtes Gerät konfigurieren.'} result={`${isAgentRunning ? 'Agent läuft' : 'Agent im Standby'} · ADB ${actionBridgeArmed ? 'ARMED' : 'DISARMED'}`} action="Run öffnen" tone="text-amber-200 bg-amber-500/10 border-amber-500/20" onClick={() => onSelectMode(SystemMode.AUTONOMOUS_AGENT)} />
-      <RouteCard icon={ShieldCheck} eyebrow="4 · Belegen" title="Evidence" description="Receipts, Synchronisation, Runtime-Verifikation und externe Evaluation nach Herkunft nachvollziehen." prerequisite="Lokale Daten können unabhängig geprüft werden." result={publicationAllowed ? 'User-confirmed / eligible' : 'Private / nicht veröffentlicht'} action="Evidence öffnen" tone="text-purple-200 bg-purple-500/10 border-purple-500/20" onClick={() => onSelectMode(SystemMode.UNIVERSAL_DATASET_SERVER)} />
-    </div>
-    <div className="rounded-2xl border border-slate-800 bg-[#0b111b]/85 p-4"><div className="flex items-start gap-3"><Smartphone className="w-5 h-5 text-slate-400 mt-0.5" aria-hidden="true" /><div className="min-w-0"><h2 className="text-sm font-semibold text-white">Aktueller Betriebszustand</h2><p className="text-xs text-slate-500 mt-1">Gerät, Agent, ADB und Datenstatus bleiben sichtbar, ohne technische Tabellen auf die Startseite zu ziehen.</p><div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2"><div className="rounded-xl bg-black/20 border border-slate-800 p-2.5"><span className="text-[10px] text-slate-600 font-mono block">DEVICE</span><span className="text-xs font-semibold text-slate-200 mt-1 block">{device.connected ? device.model || 'Connected' : 'Not connected'}</span></div><div className="rounded-xl bg-black/20 border border-slate-800 p-2.5"><span className="text-[10px] text-slate-600 font-mono block">AGENT</span><span className="text-xs font-semibold text-slate-200 mt-1 block">{isAgentRunning ? 'Running' : 'Idle'}</span></div><div className="rounded-xl bg-black/20 border border-slate-800 p-2.5"><span className="text-[10px] text-slate-600 font-mono block">ADB</span><span className="text-xs font-semibold text-slate-200 mt-1 block">{actionBridgeArmed ? 'Armed' : 'Disarmed'}</span></div><div className="rounded-xl bg-black/20 border border-slate-800 p-2.5"><span className="text-[10px] text-slate-600 font-mono block">DATA</span><span className="text-xs font-semibold text-slate-200 mt-1 block">{publicationAllowed ? 'User-confirmed' : 'Private'}</span></div></div></div></div></div>
-    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/30 p-4 text-xs text-slate-500"><div className="flex items-center gap-2 font-mono text-slate-400"><Gamepad2 className="w-4 h-4" aria-hidden="true" />Default game profile</div><p className="mt-2">Das Genre wird im Arbeitsbereich ausgewählt. Technische Werkzeuge bleiben unter <span className="text-slate-300">Advanced</span>, sind aber weiterhin vollständig erreichbar.</p><div className="mt-3 inline-flex items-center gap-2 text-emerald-300"><Sparkles className="w-3.5 h-3.5" aria-hidden="true" />Keine notwendige Funktion ist nur über eine Geste versteckt.</div></div>
-  </section>;
+  return (
+    <section className="space-y-5 pb-4" aria-labelledby="home-title">
+      <header className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-mono-label text-mono-label uppercase tracking-widest text-ink-quiet">Start Here</p>
+          <span className="inline-flex items-center gap-1.5 rounded bg-surface-deep border border-structural-steel px-2 py-0.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-signal-teal" aria-hidden="true" />
+            <span className="font-mono-label text-mono-label text-ink-secondary">STUDIO</span>
+          </span>
+        </div>
+        <h1 id="home-title" className="font-screen-title-mobile text-screen-title-mobile text-ink-primary tracking-tight">Was möchtest du tun?</h1>
+        <p className="max-w-[65ch] text-body-secondary text-ink-secondary">Wähle eine Arbeitsphase für Beobachtung, Lernen, Ausführung oder überprüfbare Evidence.</p>
+      </header>
+
+      <div className="relative space-y-3 pl-1">
+        <div className="stitch-stage-rail absolute left-[1.15rem] top-4 bottom-10 w-px" aria-hidden="true" />
+        <Stage number="01" eyebrow="PHASE 01" title="Observe & Record" icon={Radio} active={recordedFrameCount === 0}
+          description="Einen echten Spielscreen verbinden und menschliche Aktionen als Demonstration aufzeichnen."
+          prerequisite="Screen-/Videoquelle verfügbar."
+          result={String(recordedFrameCount) + ' aufgezeichnete Frames / Aktionen'}
+          action="Capture öffnen" onClick={() => onSelectMode(SystemMode.OBSERVE_RECORD)} />
+        <Stage number="02" eyebrow="PHASE 02" title="Train & Correct" icon={Brain} active={recordedFrameCount > 0}
+          description="Beobachtete Frame-/Action-Paare für Policy Training und menschliche Korrekturen nutzen."
+          prerequisite={recordedFrameCount > 0 ? 'Beobachtete Daten vorhanden.' : 'Zuerst Capture aufzeichnen.'}
+          result="Policy-, Memory- und DAgger-Werkzeuge"
+          action="Learn öffnen" onClick={() => onSelectMode(SystemMode.POLICY_TRAINING)} />
+        <Stage number="03" eyebrow="PHASE 03" title="Inference & Arming" icon={Zap} active={isAgentRunning || actionBridgeArmed}
+          description="Prädiktion zuerst im Shadow/Dry-Run beobachten; Android-Ausgabe bleibt separat und bewusst armierbar."
+          prerequisite={readyForRun ? 'Gerät und Serial konfiguriert.' : 'Gerät/Serial konfigurieren.'}
+          result={(isAgentRunning ? 'Agent läuft' : 'Agent standby') + ' · ADB ' + (actionBridgeArmed ? 'ARMED' : 'OFF')}
+          action="Run öffnen" onClick={() => onSelectMode(SystemMode.AUTONOMOUS_AGENT)} />
+        <Stage number="04" eyebrow="PHASE 04" title="Audit & Provenance" icon={ShieldCheck} active={publicationAllowed}
+          description="Receipts, Synchronisation, Runtime-Verifikation und Herkunft der Ergebnisse nachvollziehen."
+          prerequisite="Lokale Daten unabhängig prüfbar."
+          result={publicationAllowed ? 'User-confirmed' : 'Private / nicht veröffentlicht'}
+          action="Evidence öffnen" onClick={() => onSelectMode(SystemMode.UNIVERSAL_DATASET_SERVER)} />
+      </div>
+
+      <section className="stitch-muted-surface rounded-xl p-3.5" aria-labelledby="current-state-title">
+        <div className="flex items-start gap-3">
+          <Smartphone className="h-4 w-4 text-signal-teal mt-0.5 shrink-0" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <h2 id="current-state-title" className="font-section-title text-section-title text-ink-primary">Current State</h2>
+            <p className="mt-0.5 text-body-secondary text-ink-quiet">Vier Zustände bleiben lesbar, ohne eine technische Tabelle vor die eigentliche Aufgabe zu stellen.</p>
+            <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              <div className="stitch-status-cell rounded-lg p-2.5"><span className="font-mono-label text-mono-label text-ink-quiet block">DEVICE</span><span className="mt-1 block text-caption text-ink-primary">{device.connected ? device.model || 'Connected' : 'Not connected'}</span></div>
+              <div className="stitch-status-cell rounded-lg p-2.5"><span className="font-mono-label text-mono-label text-ink-quiet block">AGENT</span><span className="mt-1 block text-caption text-ink-primary">{isAgentRunning ? 'Running' : 'Idle'}</span></div>
+              <div className="stitch-status-cell rounded-lg p-2.5"><span className="font-mono-label text-mono-label text-ink-quiet block">ADB</span><span className="mt-1 block text-caption text-ink-primary">{actionBridgeArmed ? 'ARMED' : 'OFF'}</span></div>
+              <div className="stitch-status-cell rounded-lg p-2.5"><span className="font-mono-label text-mono-label text-ink-quiet block">DATA</span><span className="mt-1 block text-caption text-ink-primary">{publicationAllowed ? 'User-confirmed' : 'Private'}</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="flex flex-wrap gap-x-4 gap-y-2 text-caption text-ink-quiet" aria-label="Truth boundaries">
+        <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-signal-teal" aria-hidden="true" />Prediction ≠ Device Output</span>
+        <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-4 w-4 text-signal-teal" aria-hidden="true" />ADB separat</span>
+        <span className="inline-flex items-center gap-1.5"><Database className="h-4 w-4 text-signal-teal" aria-hidden="true" />Receipts vor Claims</span>
+      </section>
+
+      <div className="flex items-center gap-2 text-caption text-ink-quiet">
+        <Gamepad2 className="h-4 w-4 text-signal-teal" aria-hidden="true" />
+        <span>Game profile wird im kompakten Header gewählt; technische Werkzeuge liegen unter Advanced.</span>
+        <Sparkles className="h-3.5 w-3.5 text-signal-teal ml-auto shrink-0" aria-hidden="true" />
+      </div>
+    </section>
+  );
 };

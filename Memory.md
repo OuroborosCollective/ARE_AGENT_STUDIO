@@ -335,3 +335,22 @@ Changes:
 - No agent/device/ADB truth boundary or application workflow was changed.
 Learned: The previous CI/build gates verified that the APK packaged successfully, but they did not prove that externally loaded frontend styling assets were reachable at Android runtime. APK validation must include runtime asset reachability, not only package/build success.
 Next: Run the exact branch CI, CodeQL and Android APK/release gates, then verify the resulting APK visually against the supplied screenshots before merging.
+
+
+### 2026-09-28 — Supplied Stitch design implemented as the mobile studio visual baseline
+Status: IMPLEMENTED — exact branch ready for gates
+Task: Adapt the ARE Agent Studio frontend to the supplied Stitch design archive and comprehensive design specification without changing application behavior.
+Source of truth:
+- User-supplied Stitch archive with rendered screens and generated HTML for Home, Capture, Learn, Run, Evidence, Advanced, ADB authority and Action Receipt states.
+- User-supplied `are_agent_studio_complete_design_archive.md` specifying the Mobile Signal Control Room target, palette, typography, five-item navigation, workspace inventory and Android WebView target sizes.
+Changes:
+- Replaced the generic shell tokens with the Stitch palette, Geist/JetBrains Mono typography, Material Symbols font loading, compact surfaces and restrained Signal Teal interaction treatment.
+- Rebuilt mobile navigation around the Stitch 56px header, one Game Profile control, explicit ADB state, one five-item bottom navigation and a single Advanced sheet.
+- Moved contextual workspace tools into the workspace context header to eliminate the duplicated navigation visible in the physical APK screenshots.
+- Rebuilt Home as the Stitch four-stage vertical pipeline with stage rail, prerequisites, results and compact Current State cells.
+- Reworked workspace context headers and status notices to use the Stitch information hierarchy and semantic state presentation.
+- Added UI truth assertions for Stitch typography, icon font, fixed header, five-item navigation, Advanced reachability, stage rail and Current State.
+Evidence boundary:
+- No Knox/TEE, ZK masking, 60 FPS capture or cryptographic receipt behavior was invented by this UI pass; those remain design/archive references unless already backed by application/runtime evidence.
+Learned: The supplied Stitch screens provide a materially clearer visual contract than the previous generic Tailwind shell; implementation must follow their spatial hierarchy rather than only copying colors.
+Next: Run exact-head CI, CodeQL and Android APK gates, then merge only the tested head and verify the published APK against the supplied Stitch screens at 360×800, 393×852 and 412×915.
