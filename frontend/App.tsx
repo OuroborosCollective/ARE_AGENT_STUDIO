@@ -25,6 +25,7 @@ import { globalServerGateway } from './services/serverSyncGateway';
 import { now as clockNow, uniqueId as clockUniqueId } from './services/deterministicClock';
 import { Navbar } from './components/Navbar';
 import { MobileHome } from './components/MobileHome';
+import { StatusNotice, NoticeKind } from './components/StatusNotice';
 import { DeviceCanvas } from './components/DeviceCanvas';
 import { ObservationRecorder } from './components/ObservationRecorder';
 import { GenreKnowledgeMatrix } from './components/GenreKnowledgeMatrix';
@@ -82,6 +83,11 @@ export default function App() {
   const injectionInFlightRef = useRef(false);
   const [agentPrediction, setAgentPrediction] = useState<AgentPrediction | null>(null);
   const [gamePhase, setGamePhase] = useState<string>('COMBAT');
+  const [notice, setNotice] = useState<{ kind: NoticeKind; message: string } | null>(null);
+
+  const showNotice = useCallback((kind: NoticeKind, message: string) => {
+    setNotice({ kind, message });
+  }, []);
 
   const handleSelectMode = useCallback((mode: SystemMode) => {
     setActiveMode(mode);
@@ -229,7 +235,7 @@ export default function App() {
     }));
 
     setRules((prev) => [...newRules, ...prev]);
-    alert(`Loaded ${newRules.length} ${schema.title} template rules as non-empirical candidates.`);
+    showNotice('success', `Loaded ${newRules.length} ${schema.title} template rules as non-empirical candidates.`);
   };
 
   // AI Playbook Synthesizer Trigger
@@ -260,9 +266,12 @@ export default function App() {
       globalNeuralPolicy.trainStep(sample.featureVector!, [sample.action!.x, sample.action!.y, sample.action!.pressure, sample.action!.type === TouchEventType.UP ? 0 : 1]);
     }
     setIsFineTuningDAgger(false);
-    alert(correctionSamples.length
-      ? `DAgger fine-tune applied ${correctionSamples.length} recorded correction pairs.`
-      : 'No frame-bound DAgger correction pairs are available yet. Historical intervention cards are not treated as training evidence.');
+    showNotice(
+      correctionSamples.length ? 'success' : 'info',
+      correctionSamples.length
+        ? `DAgger fine-tune applied ${correctionSamples.length} recorded correction pairs.`
+        : 'No frame-bound DAgger correction pairs are available yet. Historical intervention cards are not treated as training evidence.'
+    );
   };
 
   return (
@@ -289,6 +298,9 @@ export default function App() {
 
       {/* Main Studio Viewport */}
       <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${viewport.isPhone ? 'py-4 pb-24' : 'py-6'}`}>
+        <div className="min-h-12 mb-4" aria-live="polite">
+          {notice && <StatusNotice kind={notice.kind} message={notice.message} onDismiss={() => setNotice(null)} />}
+        </div>
         {isHome ? (
           <MobileHome
             device={device}
