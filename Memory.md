@@ -320,3 +320,18 @@ Evidence: Exact branch implementation is on the final tested head after PR #38; 
 Learned: The safest way to simplify a feature-rich tool is to make each existing capability legible at the moment of entry, rather than removing capabilities or hiding them behind unexplained gestures.
 Open: CI, CodeQL and Android APK/release verification remain pending for this block.
 Next safe step: Complete the exact-head gates, merge, rebuild the APK from main and confirm the release contains the context-guided UI.
+
+
+### 2026-09-27 — Android APK WebView styling failure traced to missing network permission
+Status: IMPLEMENTED — branch verification pending
+Task: Correct the real APK rendering failure revealed by physical screenshots from the latest release.
+Evidence/Diagnosis:
+- The screenshots show Android-native default gray buttons/selects, concatenated status labels and unstyled Tailwind utility layout while the custom Signal Control Room CSS remains active.
+- `frontend/index.html` loads the existing Tailwind runtime from `https://cdn.tailwindcss.com`.
+- `android/app/src/main/AndroidManifest.xml` had no `android.permission.INTERNET`, so the WebView could not load the external Tailwind runtime in the APK.
+Changes:
+- Added `android.permission.INTERNET` to the Android manifest so the current WebView can load the frontend styling dependency.
+- Added a UI truth guard requiring the manifest permission whenever the shell still references the Tailwind CDN.
+- No agent/device/ADB truth boundary or application workflow was changed.
+Learned: The previous CI/build gates verified that the APK packaged successfully, but they did not prove that externally loaded frontend styling assets were reachable at Android runtime. APK validation must include runtime asset reachability, not only package/build success.
+Next: Run the exact branch CI, CodeQL and Android APK/release gates, then verify the resulting APK visually against the supplied screenshots before merging.

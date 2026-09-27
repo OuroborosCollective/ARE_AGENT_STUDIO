@@ -19,6 +19,7 @@ const statusNotice = fs.readFileSync(path.join(root, 'components', 'StatusNotice
 const playstyle = fs.readFileSync(path.join(root, 'components', 'PlaystyleProfiler.tsx'), 'utf8');
 const taskContext = fs.readFileSync(path.join(root, 'components', 'TaskContextHeader.tsx'), 'utf8');
 const types = fs.readFileSync(path.join(root, 'types.ts'), 'utf8');
+const androidManifest = fs.readFileSync(path.join(root, '..', 'android', 'app', 'src', 'main', 'AndroidManifest.xml'), 'utf8');
 
 assert.doesNotMatch(operationStudio, /Verified deterministic candidate projection/, 'an unsigned readback must not be presented as verified');
 assert.match(operationStudio, /returned by the configured daemon/, 'candidate reads must be attributed to their configured daemon');
@@ -96,4 +97,4 @@ assert.match(taskContext, /Voraussetzung/, 'task context must expose prerequisit
 assert.match(taskContext, /Ergebnis/, 'task context must expose outcomes');
 assert.match(taskContext, /Weiter/, 'task context must explain the next workflow step');
 assert.match(taskContext, /Schritt/, 'core workflows must expose their stage context');
-console.log('frontend UI truth guards: 72 assertions passed');
+console.log('frontend UI truth guards: 74 assertions passed');
