@@ -276,3 +276,19 @@ Evidence:
 Learned: The repository has no native Android/Capacitor project, but its existing frontend can be packaged reproducibly without changing ARE's evidence boundaries. A hosted APK shell must remain explicit about the missing local backend/ADB capability rather than implying device execution.
 Open: No durable GitHub Release exists yet; the current APK evidence is a workflow artifact.
 Next safe step: Merge PR #33 after the green checks, then deploy/update the Hatchable admin readback against main and decide separately whether a tagged signed release should be added.
+
+
+### 2026-09-27 — Mobile APK task-centered UX architecture + first implementation
+Status: VERIFIED — branch implementation; merge pending repository gates
+Task: Reframe the Android APK/frontend as a task-centered evidence-bound mobile workspace instead of a compressed desktop dashboard.
+Decisions:
+- Primary information architecture is Home / Capture / Learn / Run / Evidence, with Advanced for Ops Correction, Terminal and Code Export.
+- Added a guided Home surface explaining purpose, prerequisites and expected results for the four core user journeys.
+- Replaced the mobile long-form mode selector with persistent bottom navigation plus contextual task sub-navigation; all existing SystemMode capabilities remain reachable.
+- Added a persistent status rail exposing Device, Agent, ADB and Data state with text, not color alone.
+- Preserved the prediction-versus-device-output boundary and left protected dataset/receipt/control services untouched.
+Touched surfaces: docs/MOBILE_APK_UX_ARCHITECTURE.md, frontend/App.tsx, frontend/components/Navbar.tsx, frontend/components/MobileHome.tsx, frontend/scripts/run-ui-truth-guards.mjs, Memory.md.
+Evidence: Research synthesis used GhostUI (CHI 2026 / arXiv:2601.19258) for hidden-interaction discoverability and Scaffolded Interfaces (arXiv:2505.12101) for task-sensitive progressive disclosure. GitHub PR #36 contains the exact implementation head; CI and CodeQL are running against that head.
+Learned: Mobile complexity should be reduced by reorganizing the user's mental model, not by deleting advanced capability. Contextual disclosure plus explicit routing keeps novice orientation and expert reachability compatible.
+Open: Final green CI/CodeQL and post-merge APK rebuild remain required before marking the mobile UX block fully verified.
+Next safe step: Complete PR #36 gates, merge to main, rebuild the APK from the merged head, then perform the narrow mobile viewport/runtime check.
