@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PlaystyleProfile } from '../types';
 import { PLAYSTYLE_PROFILES } from '../constants';
+import { StatusNotice } from './StatusNotice';
 import {
   UserCheck,
   Sliders,
@@ -24,10 +25,11 @@ export const PlaystyleProfiler: React.FC<PlaystyleProfilerProps> = ({
   onUpdateProfile,
 }) => {
   const [profile, setProfile] = useState<PlaystyleProfile>(currentProfile);
+  const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
     onUpdateProfile(profile);
-    alert('Playstyle profile saved. Reaction-time cadence is applied to the agent loop; the other fields remain explicit research metadata until a measured adapter is implemented.');
+    setSaved(true);
   };
 
   return (
@@ -56,6 +58,10 @@ export const PlaystyleProfiler: React.FC<PlaystyleProfilerProps> = ({
             <span>Save Research Profile</span>
           </button>
         </div>
+      </div>
+
+      <div className="min-h-12" aria-live="polite">
+        {saved && <StatusNotice kind="success" message="Playstyle profile gespeichert. Die Reaction-Time-Cadence wird im Agent-Loop verwendet; die übrigen Felder bleiben ausdrücklich Research-Metadaten." onDismiss={() => setSaved(false)} />}
       </div>
 
       {/* Profile Presets Grid */}
@@ -94,7 +100,7 @@ export const PlaystyleProfiler: React.FC<PlaystyleProfilerProps> = ({
                 <span className="text-cyan-300">{preset.cameraPanCadence}</span>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
