@@ -67,17 +67,18 @@ export const PlaystyleProfiler: React.FC<PlaystyleProfilerProps> = ({
       {/* Profile Presets Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {PLAYSTYLE_PROFILES.map((preset) => (
-          <div
+          <button
+            type="button"
             key={preset.name}
             onClick={() => {
               setProfile(preset);
               onSelectProfile(preset);
+              setSaved(false);
             }}
-            className={`p-5 rounded-2xl cursor-pointer border transition-all ${
-              profile.name === preset.name
-                ? 'bg-[#111726] border-purple-500 ring-2 ring-purple-500/30'
-                : 'bg-cyber-card border-cyber-border hover:border-slate-700'
-            }`}
+            aria-pressed={profile.name === preset.name}
+            className={profile.name === preset.name
+              ? 'w-full text-left p-5 rounded-2xl border transition-all focus-visible:outline-none bg-[#111726] border-purple-500 ring-2 ring-purple-500/30'
+              : 'w-full text-left p-5 rounded-2xl border transition-all focus-visible:outline-none bg-cyber-card border-cyber-border hover:border-slate-700'}
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-white">{preset.name}</span>
