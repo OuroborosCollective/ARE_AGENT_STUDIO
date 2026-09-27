@@ -26,6 +26,7 @@ import { now as clockNow, uniqueId as clockUniqueId } from './services/determini
 import { Navbar } from './components/Navbar';
 import { MobileHome } from './components/MobileHome';
 import { StatusNotice, type NoticeKind } from './components/StatusNotice';
+import { TaskContextHeader } from './components/TaskContextHeader';
 import { DeviceCanvas } from './components/DeviceCanvas';
 import { ObservationRecorder } from './components/ObservationRecorder';
 import { GenreKnowledgeMatrix } from './components/GenreKnowledgeMatrix';
@@ -311,7 +312,9 @@ export default function App() {
             onSelectMode={handleSelectMode}
           />
         ) : (
-        <div className={`grid grid-cols-1 lg:grid-cols-12 ${viewport.isCompact ? 'gap-6' : 'gap-8'} items-start`}>
+        <>
+          <TaskContextHeader activeMode={activeMode} />
+          <div className={`grid grid-cols-1 lg:grid-cols-12 ${viewport.isCompact ? 'gap-6' : 'gap-8'} items-start`}>
 
           {/* Left Column: Real Phone Screen Canvas Receiver */}
           {activeMode !== SystemMode.OPERATION_CORRECTION_LEARNING && activeMode !== SystemMode.FORGE_CONTROL_ROOM && <div className="lg:col-span-5 flex justify-center lg:sticky lg:top-24">
@@ -440,7 +443,8 @@ export default function App() {
             )}
           </div>
 
-        </div>
+          </div>
+        </>
         )}
       </main>
     </div>
