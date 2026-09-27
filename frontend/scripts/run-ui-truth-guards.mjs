@@ -17,6 +17,8 @@ const navbar = fs.readFileSync(path.join(root, 'components', 'Navbar.tsx'), 'utf
 const mobileHome = fs.readFileSync(path.join(root, 'components', 'MobileHome.tsx'), 'utf8');
 const statusNotice = fs.readFileSync(path.join(root, 'components', 'StatusNotice.tsx'), 'utf8');
 const playstyle = fs.readFileSync(path.join(root, 'components', 'PlaystyleProfiler.tsx'), 'utf8');
+const taskContext = fs.readFileSync(path.join(root, 'components', 'TaskContextHeader.tsx'), 'utf8');
+const types = fs.readFileSync(path.join(root, 'types.ts'), 'utf8');
 
 assert.doesNotMatch(operationStudio, /Verified deterministic candidate projection/, 'an unsigned readback must not be presented as verified');
 assert.match(operationStudio, /returned by the configured daemon/, 'candidate reads must be attributed to their configured daemon');
@@ -80,4 +82,18 @@ assert.match(statusNotice, /Notice schließen/, 'status feedback must be dismiss
 assert.match(app, /<StatusNotice/, 'App must render shared status feedback');
 assert.match(playstyle, /<StatusNotice/, 'Playstyle save feedback must use the shared status surface');
 assert.match(playstyle, /aria-pressed=\{profile\.name === preset\.name\}/, 'playstyle presets must use semantic pressed buttons');
-console.log('frontend UI truth guards: 53 assertions passed');
+
+
+
+// Task-context coverage guards (issue #39)
+const systemModeBlock = types.match(/export enum SystemMode \{([\s\S]*?)\n\}/)?.[1] ?? '';
+const systemModeValues = [...systemModeBlock.matchAll(/= '([^']+)'/g)].map((match) => match[1]);
+assert.equal(systemModeValues.length, 14, 'SystemMode enum must retain the complete current capability set');
+for (const mode of systemModeValues) {
+  assert.ok(taskContext.includes(mode), `TaskContextHeader must cover SystemMode ${mode}`);
+}
+assert.match(taskContext, /Voraussetzung/, 'task context must expose prerequisites');
+assert.match(taskContext, /Ergebnis/, 'task context must expose outcomes');
+assert.match(taskContext, /Weiter/, 'task context must explain the next workflow step');
+assert.match(taskContext, /Schritt/, 'core workflows must expose their stage context');
+console.log('frontend UI truth guards: 72 assertions passed');
