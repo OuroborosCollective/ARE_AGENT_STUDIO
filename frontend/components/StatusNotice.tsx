@@ -10,10 +10,10 @@ interface StatusNoticeProps {
 }
 
 const tone = {
-  success: { box: 'border-emerald-800/60 bg-emerald-950/25', text: 'text-emerald-100', icon: CheckCircle2 },
-  info: { box: 'border-cyan-800/60 bg-cyan-950/25', text: 'text-cyan-100', icon: Info },
-  warning: { box: 'border-amber-800/60 bg-amber-950/25', text: 'text-amber-100', icon: AlertTriangle },
-  error: { box: 'border-red-800/60 bg-red-950/25', text: 'text-red-100', icon: XCircle },
+  success: { box: 'border-signal-teal/30 bg-surface-deep', text: 'text-ink-primary', icon: CheckCircle2 },
+  info: { box: 'border-structural-steel bg-surface-deep', text: 'text-ink-primary', icon: Info },
+  warning: { box: 'border-status-caution/40 bg-surface-deep', text: 'text-ink-primary', icon: AlertTriangle },
+  error: { box: 'border-status-alert/40 bg-surface-deep', text: 'text-ink-primary', icon: XCircle },
 } as const;
 
 export const StatusNotice: React.FC<StatusNoticeProps> = ({ kind, message, onDismiss }) => {
@@ -34,7 +34,7 @@ export const StatusNotice: React.FC<StatusNoticeProps> = ({ kind, message, onDis
           <button
             type="button"
             onClick={onDismiss}
-            className="shrink-0 rounded-lg p-1 text-slate-400 hover:text-white hover:bg-black/20 focus-visible:outline-none"
+            className="shrink-0 min-h-10 min-w-10 rounded-lg p-2 text-ink-quiet hover:text-ink-primary hover:bg-surface-container focus-visible:outline-none"
             aria-label="Notice schließen"
           >
             <X className="w-4 h-4" aria-hidden="true" />
