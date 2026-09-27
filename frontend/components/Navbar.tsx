@@ -95,6 +95,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <StatusPill label="Device" value={device.connected ? 'Connected' : 'Local'} tone={device.connected ? 'safe' : 'neutral'} />
                 <StatusPill label="Agent" value={isAgentRunning ? 'Running' : 'Idle'} tone={isAgentRunning ? 'warn' : 'neutral'} />
                 <StatusPill label="ADB" value={actionBridgeArmed ? 'Armed' : 'Off'} tone={actionBridgeArmed ? 'danger' : 'safe'} />
+                <label className="glass-panel inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-mono text-slate-400">
+                  <Gamepad2 className="w-3.5 h-3.5 text-cyan-300" aria-hidden="true" />
+                  <span className="sr-only">Game profile</span>
+                  <select value={gameArchetype} onChange={(e) => onSelectGameArchetype(e.target.value as GameArchetype)} className="bg-transparent text-slate-200 focus:outline-none max-w-36">
+                    <option value={GameArchetype.MOBA_ARENA}>MOBA / ARPG</option>
+                    <option value={GameArchetype.FPS}>FPS</option>
+                    <option value={GameArchetype.SIM_MANAGEMENT}>Sim / Management</option>
+                    <option value={GameArchetype.ACTION_RPG}>Action-RPG</option>
+                    <option value={GameArchetype.MMORPG}>MMORPG</option>
+                    <option value={GameArchetype.PUZZLE_MATCH}>Puzzle / Match-3</option>
+                  </select>
+                </label>
               </div>
               <button type="button" onClick={onTriggerKillswitch} className={`inline-flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold ${isAgentRunning ? 'bg-red-600 text-white' : 'bg-red-950/40 text-red-300 border border-red-800/60'}`} aria-label={isAgentRunning ? 'Stop agent and disarm Android output' : 'Emergency stop control'}>
                 <ShieldAlert className="w-4 h-4" aria-hidden="true" /><span className="hidden sm:inline">{isAgentRunning ? 'STOP' : 'SAFE'}</span>
@@ -104,6 +116,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <div className="lg:hidden pb-2">
             <div className="flex items-center gap-2 overflow-x-auto pb-1" aria-label="Current state">
+              <label className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-cyan-900/70 bg-cyan-950/20 text-[10px] font-mono text-cyan-200">
+                <Gamepad2 className="w-3.5 h-3.5" aria-hidden="true" />
+                <span className="sr-only">Game profile</span>
+                <select aria-label="Game profile" value={gameArchetype} onChange={(e) => onSelectGameArchetype(e.target.value as GameArchetype)} className="bg-transparent text-cyan-100 focus:outline-none">
+                  <option value={GameArchetype.MOBA_ARENA}>MOBA / ARPG</option>
+                  <option value={GameArchetype.FPS}>FPS</option>
+                  <option value={GameArchetype.SIM_MANAGEMENT}>Sim / Management</option>
+                  <option value={GameArchetype.ACTION_RPG}>Action-RPG</option>
+                  <option value={GameArchetype.MMORPG}>MMORPG</option>
+                  <option value={GameArchetype.PUZZLE_MATCH}>Puzzle / Match-3</option>
+                </select>
+              </label>
               <StatusPill label="Device" value={device.connected ? 'Connected' : 'Local only'} tone={device.connected ? 'safe' : 'neutral'} />
               <StatusPill label="Agent" value={isAgentRunning ? 'Running' : 'Idle'} tone={isAgentRunning ? 'warn' : 'neutral'} />
               <StatusPill label="ADB" value={actionBridgeArmed ? 'ARMED' : 'DISARMED'} tone={actionBridgeArmed ? 'danger' : 'safe'} />
