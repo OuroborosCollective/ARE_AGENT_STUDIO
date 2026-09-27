@@ -96,7 +96,7 @@ for (const mode of systemModeValues) {
 assert.match(taskContext, /Voraussetzung/, 'task context must expose prerequisites');
 assert.match(taskContext, /Ergebnis/, 'task context must expose outcomes');
 assert.match(taskContext, /Weiter/, 'task context must explain the next workflow step');
-assert.match(taskContext, /Schritt/, 'core workflows must expose their stage context');
+assert.match(taskContext, /Stage|STEP/, 'core workflows must expose their stage context');
 assert.match(shell, /Geist:wght@400;450;500;600;650;700/, 'Stitch typography must load Geist');
 assert.match(shell, /Material\+Symbols\+Outlined/, 'Stitch screens use the Material Symbols icon language');
 assert.match(navbar, /fixed top-0 inset-x-0 z-50/, 'mobile shell navigation must use the Stitch compact fixed header');
