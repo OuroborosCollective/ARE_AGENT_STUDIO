@@ -112,6 +112,41 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
+          {!isHome && activeGroup && (
+            <div className="hidden lg:flex items-center gap-1 overflow-x-auto pb-3" aria-label="Current task tools">
+              <span className="text-[10px] text-slate-600 font-mono uppercase tracking-wider px-2 shrink-0">{taskGroups[activeGroup].label}</span>
+              {groupModes[activeGroup].map(({ mode, label, icon: Icon }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => selectMode(mode)}
+                  aria-current={activeMode === mode ? 'page' : undefined}
+                  className={`inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl text-xs font-semibold whitespace-nowrap ${activeMode === mode ? 'bg-cyan-500/12 text-cyan-200 border border-cyan-500/30' : 'text-slate-400 border border-transparent hover:text-white hover:bg-slate-800/60'}`}
+                >
+                  <Icon className="w-3.5 h-3.5" aria-hidden="true" />{label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!isHome && activeGroup && (
+            <div className="lg:hidden pb-2 -mt-1">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1" aria-label="Current task tools">
+                {groupModes[activeGroup].map(({ mode, label, icon: Icon }) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => selectMode(mode)}
+                    aria-current={activeMode === mode ? 'page' : undefined}
+                    className={`min-h-10 shrink-0 inline-flex items-center gap-1.5 px-3 rounded-xl text-[11px] font-semibold whitespace-nowrap ${activeMode === mode ? 'bg-cyan-500/12 text-cyan-200 border border-cyan-500/30' : 'bg-slate-950/30 text-slate-400 border border-slate-800'}`}
+                  >
+                    <Icon className="w-3.5 h-3.5" aria-hidden="true" />{label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {advancedOpen && (
             <div className="hidden lg:grid grid-cols-3 gap-2 pb-3" role="menu" aria-label="Advanced tools">
               {advancedModes.map(({ mode, label, description, icon: Icon }) => (
