@@ -306,3 +306,17 @@ Evidence: Exact branch head 150768c54e15c239cc9587b6a34369ca8e9de059 contains th
 Learned: Mobile feedback should acknowledge routine outcomes in place and reserve assertive alerts for actionable errors; semantic controls also make touch-first interactions more predictable and accessible.
 Open: Final CI, CodeQL and Android APK/release verification are pending on the final branch head.
 Next safe step: Complete PR #37 gates, merge only the exact tested head, then rebuild/publish the APK from main.
+
+### 2026-09-27 — Workspace context guidance for complete capability coverage
+Status: VERIFIED — branch implementation; merge pending repository gates
+Task: Make each workspace self-explanatory so users can see purpose, prerequisite, outcome and next workflow step without opening documentation.
+Decisions:
+- Added shared TaskContextHeader covering all 14 SystemMode capabilities.
+- Core flows show Capture/Learn/Run/Evidence stage context; Advanced tools are explicitly identified as technical.
+- Kept existing modules, navigation and truth-boundary services unchanged; guidance is additive only.
+- Added recursive UI coverage assertions that parse the SystemMode enum and require a matching context entry for every capability.
+Touched surfaces: frontend/components/TaskContextHeader.tsx, frontend/App.tsx, frontend/scripts/run-ui-truth-guards.mjs, Memory.md.
+Evidence: Exact branch implementation is on the final tested head after PR #38; the UI guard now checks complete 14-mode coverage plus prerequisite/outcome/next-step semantics.
+Learned: The safest way to simplify a feature-rich tool is to make each existing capability legible at the moment of entry, rather than removing capabilities or hiding them behind unexplained gestures.
+Open: CI, CodeQL and Android APK/release verification remain pending for this block.
+Next safe step: Complete the exact-head gates, merge, rebuild the APK from main and confirm the release contains the context-guided UI.
