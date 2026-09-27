@@ -298,10 +298,12 @@ export default function App() {
       />
 
       {/* Main Studio Viewport */}
-      <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${viewport.isPhone ? 'py-4 pb-24' : 'py-6'}`}>
-        <div className="min-h-12 mb-4" aria-live="polite">
-          {notice && <StatusNotice kind={notice.kind} message={notice.message} onDismiss={() => setNotice(null)} />}
-        </div>
+      <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${viewport.isPhone ? 'pt-16 pb-28' : 'pt-20 pb-8'}`}>
+        {notice && (
+          <div className="mb-3" aria-live="polite">
+            <StatusNotice kind={notice.kind} message={notice.message} onDismiss={() => setNotice(null)} />
+          </div>
+        )}
         {isHome ? (
           <MobileHome
             device={device}
@@ -313,7 +315,7 @@ export default function App() {
           />
         ) : (
         <>
-          <TaskContextHeader activeMode={activeMode} />
+          <TaskContextHeader activeMode={activeMode} onSelectMode={handleSelectMode} />
           <div className={`grid grid-cols-1 lg:grid-cols-12 ${viewport.isCompact ? 'gap-6' : 'gap-8'} items-start`}>
 
           {/* Left Column: Real Phone Screen Canvas Receiver */}
