@@ -25,7 +25,7 @@ import { globalServerGateway } from './services/serverSyncGateway';
 import { now as clockNow, uniqueId as clockUniqueId } from './services/deterministicClock';
 import { Navbar } from './components/Navbar';
 import { MobileHome } from './components/MobileHome';
-import { StatusNotice, NoticeKind } from './components/StatusNotice';
+import { StatusNotice, type NoticeKind } from './components/StatusNotice';
 import { DeviceCanvas } from './components/DeviceCanvas';
 import { ObservationRecorder } from './components/ObservationRecorder';
 import { GenreKnowledgeMatrix } from './components/GenreKnowledgeMatrix';
