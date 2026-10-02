@@ -2,22 +2,74 @@
 
 > Issue #20: Execute first real Forge practice benchmark, reconcile, learn & snapshot.
 >
-> **Status: BLOCKED** — No free/practice run is available or confirmed.
+> **Status: BLOCKED** — Account-specific practice allowance and a deployed gameplay runner are not verified. Public Forge discovery is reachable; that does not prove zero remaining allowance.
 > This issue must NOT be converted into a paid purchase.
 
 ## Preconditions (all must be met before execution)
 
-- [x] Structured policy contract live (#8)
-- [x] Forge adapter live and current contract re-read (#9)
-- [x] Dedicated VPS runner deployed (#11)
-- [x] Trusted trajectory ledger (#10)
-- [x] Reconciliation pipeline ready (#12)
-- [x] Learning pipeline ready but disabled until terminal (#13)
-- [x] HF private snapshot pipeline ready (#16)
-- [x] Rights gate installed (#15)
-- [x] Training/evaluation receipt lane ready (#14)
-- [x] CI/contract-drift/security gates installed (#19)
-- [ ] Remaining practice allowance or an explicitly owner-authorized existing run confirmed through real Forge readback
+These are live acceptance gates, not a source-file inventory. Closed prerequisite
+issues demonstrate merged scaffolding, not a deployed integration.
+
+- [ ] Structured policy bound to the live run contract (#8)
+- [ ] Real authenticated adapter integrated and current run contract re-read (#9)
+- [ ] Dedicated VPS gameplay runner deployed at exact source/image revision (#11)
+- [ ] Trusted durable trajectory ledger connected to the runner (#10)
+- [ ] Independent reconciliation pipeline connected and tested (#12)
+- [ ] Learning pipeline ready and disabled until terminal (#13)
+- [ ] HF private snapshot pipeline ready with permitted input fields (#16)
+- [ ] Current rights decision bound to a reviewed record (#15)
+- [ ] Training receipt lane verified, if training is part of the wave (#14)
+- [ ] CI/full regressions green on the exact deployment revision (#19)
+- [ ] Remaining free allowance or authorized owned run confirmed by authenticated Forge readback
+
+The bundle builder accepts full 40/64-character Git IDs and digest-pinned images.
+Each precondition needs a `readinessEvidence[id]` reference containing
+`receiptSha256`, `sourceRef`, and the exact `gitSha`. The orchestrator must verify
+those receipts before supplying them. The builder binds references; it cannot
+independently verify remote facts or authenticate the caller. Post-run learning
+and snapshot outputs are optional, never prerequisites for a first run.
+A terminal bundle requires run identity, trajectory root, reconciliation receipt,
+coverage and VERIFIED/PARTIAL verdict. The bundle's integrity hash alone does
+not establish independent verification of any result.
+
+## Read-only operational check
+
+```bash
+npm start --prefix forge-runner
+npm run preflight --prefix forge-runner
+```
+
+The service binds to `127.0.0.1:8090` by default. It has no gameplay/mutation route.
+`GET /health` returns 200 for a live process; `GET /ready` returns 503 until
+verified contract/ledger/credentials and qualification readiness are supplied.
+The default host deliberately has no gameplay adapters. It must not be described
+as a deployed autonomous player. `FORGE_RUNNER_DATA_DIR` selects durable state;
+corrupt state fails startup. Public preflight only performs three GET requests,
+hashes the observed documents, and exits 2 (BLOCKED) because account allowance
+and VPS readiness are not established by public documents.
+
+## 2026-10-02 source/runtime audit
+
+- Public registry, compatibility SKILL and connector OpenAPI returned HTTP 200.
+  Receipt: `docs/evidence/forge-public-preflight-2026-10-02.json`.
+- Current connector contract exposes discovery, free entry, owned runs, context,
+  turns and events. HTTP 200 on a turn may mean accepted **or soft-rejected**;
+  an adapter must parse the game response rather than infer acceptance from HTTP.
+- No authenticated Forge connector is available in this work session. The
+  expected Forge account/run environment variables and a VPS deployment target
+  are not configured here. This does not prove they are absent elsewhere.
+- Huggi lookup could not resolve `Thorsu/are-agent-forge-trajectories` in the
+  connected context. No dataset was created or uploaded during this audit.
+- The existing `ForgeActionClient.submitAction` is still a non-network scaffold.
+  The existing runner also needs durable pre-submit ledger wiring, async transport
+  handling, policy freeze enforcement, and full learning eligibility evaluation
+  before any gameplay deployment. A string reconciliation verdict alone is not
+  sufficient authorization to learn.
+- Current public terms/research pages do not supply a field-level permission
+  record for our proposed training/export use. Public and private export remain
+  subject to the existing rights gate; no Forge content was published.
+- The process host and readiness regressions are local runtime evidence only;
+  they are not VPS, external gameplay, training, or Hugging Face publication proof.
 
 **If no free/practice run is available, STOP with BLOCKED. Do not convert this issue into a paid purchase.**
 
@@ -68,4 +120,4 @@ can be followed from source Git revision → runner digest → policy → each
 action/response → Forge readback → reconciliation → optional offline learning
 → HF snapshot, with no paid action and no fake evidence.
 
-**Current status: BLOCKED — awaiting practice run availability or owner authorization.**
+**Current status: BLOCKED — requires authenticated Forge readback and completed, evidenced gameplay wiring/deployment.**

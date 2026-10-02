@@ -1,0 +1,36 @@
+{
+  "schema_version": "forge-public-preflight.v1",
+  "observed_at_epoch": 1790923554863,
+  "status": "BLOCKED",
+  "sources": [
+    {
+      "url": "https://forgeai.gg/forge/registry.json",
+      "http_status": 200,
+      "body_sha256": "3c9272c68dfede4ce7995ae3af91d558e5187369ae6222b9218cd002e73c2294",
+      "status": "OBSERVED"
+    },
+    {
+      "url": "https://forgeai.gg/skill.md",
+      "http_status": 200,
+      "body_sha256": "30607cdb6a98a64416386ac8c8236fcd944a07c8c0b18d664cd8f7fe2da4c908",
+      "status": "OBSERVED"
+    },
+    {
+      "url": "https://forgeai.gg/api/connectors/openapi.json",
+      "http_status": 200,
+      "body_sha256": "22aafbbeb20fd034f66d99827f55063a348847e9e237797302fcc56288d583da",
+      "status": "OBSERVED",
+      "required_operations_present": true
+    }
+  ],
+  "contract_structure": "OBSERVED",
+  "practice_allowance": null,
+  "authorized_run_id": null,
+  "blockers": [
+    "Authenticated Forge allowance/owned-run readback required",
+    "Exact-revision VPS deployment and integrated gameplay adapters require evidence"
+  ],
+  "gameplay_requests": 0,
+  "paid_requests": 0,
+  "receipt_sha256": "88d859f7142a58de75e80017ce1d5af54a3db0b98cf38ced18c3e2091e5ba35b"
+}

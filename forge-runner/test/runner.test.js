@@ -208,7 +208,8 @@ test('getRunnerHealth returns all required fields', () => {
   runner.reconciliationBacklog = 2;
   const health = getRunnerHealth(runner);
   assert.equal(health.process_alive, true);
-  assert.equal(health.contract_reachable, true);
+  assert.equal(health.contract_loaded, true);
+  assert.equal(health.contract_reachable, false, "loaded contract is not a live readback");
   assert.equal(health.credential_configured, true);
   assert.equal(health.active_run_state, RUN_STATES.RUNNING);
   assert.equal(health.ledger_trusted, true);

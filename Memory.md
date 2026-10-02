@@ -354,3 +354,13 @@ Evidence boundary:
 - No Knox/TEE, ZK masking, 60 FPS capture or cryptographic receipt behavior was invented by this UI pass; those remain design/archive references unless already backed by application/runtime evidence.
 Learned: The supplied Stitch screens provide a materially clearer visual contract than the previous generic Tailwind shell; implementation must follow their spatial hierarchy rather than only copying colors.
 Next: Run exact-head CI, CodeQL and Android APK gates, then merge only the tested head and verify the published APK against the supplied Stitch screens at 360×800, 393×852 and 412×915.
+
+### 2026-10-02 — Issue #20 qualification readiness and process-host repair
+Status: PARTIAL — local runtime verified; external qualification BLOCKED
+Task: Resume ForgeAI qualification from current main; remove false readiness and startup blockers.
+Decisions: Accept real Git object IDs, require exact-revision readiness receipt references, separate pre-run readiness from optional learning/snapshot outputs, bind pre-run policy/config/SKILL, reject unreconciled terminal completion, and stop treating hash presence as VERIFIED. Start an actual read-only process with distinct liveness/readiness; add public GET-only contract preflight and Docker process smoke to CI.
+Touched surfaces: Qualification bundle/tests, forge-runner host/health/preflight/tests/Dockerfile, CI, qualification docs and public evidence receipt.
+Evidence: Local full check, backend 40 tests, runner 29 tests, frontend core/typecheck/build, UI 81, production-entry 7, HF dataset 5/Forge 8/presentation 6, marketing 5/packaging 4 and Space dry-run pass. Real loopback HTTP returns health 200/readiness 503; public Forge registry/SKILL/OpenAPI return 200, receipt 88d859f7142a58de75e80017ce1d5af54a3db0b98cf38ced18c3e2091e5ba35b in docs/evidence/forge-public-preflight-2026-10-02.json. Wolfram Boolean check confirms no completion without readiness/authorization and no pre-run learning requirement. Docker execution is delegated to exact-head CI, not claimed locally.
+Learned: Closed scaffolding issues and a loaded contract are not deployment/readback proof; the old Docker command exited without serving, and the old qualification gate both rejected SHA-1 Git IDs and required future learning outputs.
+Open: No authenticated Forge/VPS target in this session; Huggi could not resolve the proposed dataset. Gameplay adapter/ledger/async transport/freeze/learning wiring and rights decisions still need live evidence. No run, score, training, upload or payment occurred.
+Next safe step: Complete exact-head CI and merge this bounded repair; keep #20 open until authenticated allowance/run readback and a fully wired dedicated gameplay runner establish the remaining gates.
