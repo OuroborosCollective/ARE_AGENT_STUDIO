@@ -6,8 +6,9 @@
   "description": "Durable VPS Forge runner with restart-safe run state machine for ARE Agent Studio",
   "main": "runner.js",
   "scripts": {
-    "start": "node runner.js",
-    "test": "node --test"
+    "start": "node server.js",
+    "test": "node --test",
+    "preflight": "node preflight.js"
   },
   "engines": {
     "node": ">=22"

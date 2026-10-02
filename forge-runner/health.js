@@ -16,7 +16,8 @@
 export function getRunnerHealth(runner) {
   return {
     process_alive: true,
-    contract_reachable: runner.contract != null,
+    contract_loaded: runner.contract != null,
+    contract_reachable: runner.contractReadbackVerified === true,
     credential_configured: runner.actionClient?.vault?.hasCredentials?.() ?? false,
     active_run_state: runner.stateMachine?.state ?? 'IDLE',
     ledger_trusted: runner.trajectoryStore?.initialized ?? false,
@@ -30,9 +31,18 @@ export function getRunnerHealth(runner) {
  */
 export function createHealthHandler(runner) {
   return (req, res) => {
+    if (req.method !== 'GET') {
+      res.writeHead(405, { Allow: 'GET' });
+      res.end();
+      return;
+    }
     if (req.url === '/health' || req.url === '/ready') {
       const health = getRunnerHealth(runner);
-      const allHealthy = health.process_alive && health.ledger_trusted;
+      const ready = health.process_alive && health.contract_reachable && health.credential_configured
+        && health.ledger_trusted && health.reconciliation_backlog === 0
+        && runner.qualificationReady === true;
+      const allHealthy = req.url === '/health' ? health.process_alive : ready;
+      health.ready = ready;
       res.writeHead(allHealthy ? 200 : 503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(health, null, 2));
       return;

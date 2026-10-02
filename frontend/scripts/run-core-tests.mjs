@@ -682,7 +682,7 @@ assert.ok(unknownResult.quarantined_fields.includes('unknown_field'), 'unknown c
 const blockedInput = {
   runId: null,
   dungeonId: null,
-  gitSha: 'a'.repeat(64),
+  gitSha: 'b7d583a95b82ff942f49d2e36d45f3625e0d9f14',
   runnerImageDigest: null,
   policyRevisionSha256: null,
   policyConfigSha256: null,
@@ -717,15 +717,12 @@ assert.ok(!(await verifyQualificationEvidenceIntegrity(tamperedBundle)), 'tamper
 // Ready bundle: all preconditions met but no run executed
 const readyInput = {
   ...blockedInput,
-  runnerImageDigest: 'sha256:abc123',
+  runnerImageDigest: `sha256:${'a'.repeat(64)}`,
   policyRevisionSha256: 'b'.repeat(64),
   policyConfigSha256: 'c'.repeat(64),
   forgeContractSha256: 'd'.repeat(64),
   skillMdSha256: 'e'.repeat(64),
-  trajectoryRootHash: 'f'.repeat(64),
-  reconciliationVerdict: 'VERIFIED',
-  learningReceiptSha256: '1'.repeat(64),
-  hfSnapshotManifestSha256: '2'.repeat(64),
+  readinessEvidence: Object.fromEntries(checkQualificationPreconditions(blockedInput).map(p => [p.id, { receiptSha256: 'a'.repeat(64), sourceRef: 'test-fixture:readiness', gitSha: blockedInput.gitSha }])),
   practiceRunAuthorized: true,
 };
 const readyBundle = await buildQualificationEvidenceBundle(readyInput);
@@ -738,13 +735,17 @@ const completedInput = {
   runId: 'forge-run-qual-001',
   dungeonId: 'forge-dungeon-001',
   terminalState: 'terminal',
+  trajectoryRootHash: 'f'.repeat(64),
+  reconciliationVerdict: 'VERIFIED',
+  reconciliationReceiptSha256: 'a'.repeat(64),
+  reconciliationCoverage: 'test-fixture: independently compared required fields',
   externalScore: '42',
   policyNPlus1ArtifactHash: '3'.repeat(64),
 };
 const completedBundle = await buildQualificationEvidenceBundle(completedInput);
 assert.equal(completedBundle.status, 'COMPLETED', 'terminal run with reconciliation must yield COMPLETED');
 assert.ok(completedBundle.evidence.some((e) => e.field === 'run_id' && e.status === 'OBSERVED'), 'completed bundle must have observed run_id');
-assert.ok(completedBundle.evidence.some((e) => e.field === 'external_score' && e.status === 'VERIFIED'), 'completed bundle must have verified external_score');
+assert.ok(completedBundle.evidence.some((e) => e.field === 'external_score' && e.status === 'OBSERVED'), 'score observation alone does not verify a trajectory');
 
 // Invalid input must fail validation
 assert.ok(validateQualificationRunInput({ ...blockedInput, gitSha: 'not-a-hash' }).length > 0, 'invalid git SHA must be rejected');
@@ -755,6 +756,40 @@ assert.ok(validateQualificationRunInput({ ...blockedInput, practiceRunAuthorized
 const preconditions = checkQualificationPreconditions(blockedInput);
 assert.equal(preconditions.length, 11, 'must check all 11 preconditions from the evidence doc');
 assert.ok(preconditions.some((p) => p.id === 'practice_run_authorized' && !p.met), 'practice_run_authorized precondition must be unmet when not authorized');
+
+// Qualification regressions: no false readiness, circular learning gate or false verification.
+assert.equal(readyInput.learningReceiptSha256, null);
+assert.equal(readyInput.hfSnapshotManifestSha256, null);
+assert.equal((await buildQualificationEvidenceBundle({ ...readyInput, readinessEvidence: undefined })).status, 'BLOCKED');
+for (const id of Object.keys(readyInput.readinessEvidence)) {
+  const refs = { ...readyInput.readinessEvidence };
+  delete refs[id];
+  assert.equal((await buildQualificationEvidenceBundle({ ...readyInput, readinessEvidence: refs })).status, 'BLOCKED', `missing ${id} must block`);
+}
+assert.equal((await buildQualificationEvidenceBundle({ ...readyInput, gitSha: 'a'.repeat(40) })).status, 'BLOCKED', 'stale-head receipts must block');
+assert.equal((await buildQualificationEvidenceBundle({ ...completedInput, practiceRunAuthorized: false })).status, 'BLOCKED');
+for (const verdict of ['MISMATCH', 'UNOBSERVABLE', 'UNPROVABLE']) {
+  assert.equal((await buildQualificationEvidenceBundle({ ...completedInput, reconciliationVerdict: verdict })).status, 'BLOCKED');
+}
+for (const key of ['runId', 'trajectoryRootHash', 'reconciliationReceiptSha256', 'reconciliationCoverage']) {
+  assert.equal((await buildQualificationEvidenceBundle({ ...completedInput, [key]: null })).status, 'BLOCKED');
+}
+assert.equal((await buildQualificationEvidenceBundle({ ...readyInput, runId: 'running' })).status, 'EXECUTING');
+assert.equal((await buildQualificationEvidenceBundle({ ...completedInput, reconciliationVerdict: 'PARTIAL' })).status, 'COMPLETED');
+assert.ok(completedBundle.evidence.every(e => e.status !== 'VERIFIED'), 'an envelope hash is not independent verification');
+assert.equal((await buildQualificationEvidenceBundle({ ...completedInput, dungeonId: null })).evidence.find(e => e.field === 'dungeon_id').status, 'UNOBSERVABLE');
+assert.ok(validateQualificationRunInput({ ...blockedInput, runnerImageDigest: 'sha256:abc123' }).length);
+assert.ok(validateQualificationRunInput({ ...blockedInput, runId: '' }).length);
+assert.ok(validateQualificationRunInput({ ...blockedInput, reconciliationVerdict: 'SUCCESS' }).length);
+assert.equal(validateQualificationRunInput({ ...blockedInput, gitSha: 'a'.repeat(64) }).length, 0);
+const changedReference = structuredClone(readyBundle);
+changedReference.preconditions[0].evidence.sourceRef = 'altered';
+assert.equal(await verifyQualificationEvidenceIntegrity(changedReference), false);
+
+for (const key of ['policyRevisionSha256', 'policyConfigSha256', 'skillMdSha256']) {
+  const changed = await buildQualificationEvidenceBundle({ ...readyInput, [key]: '9'.repeat(64) });
+  assert.notEqual(changed.bundle_sha256, readyBundle.bundle_sha256, `${key} must be bound before turn one`);
+}
 
 // --- Deterministic clock regression (determinism seam) ---
 detClock.disableDeterministicMode();
@@ -770,4 +805,4 @@ assert.equal(detClock.uniqueId('TR'), 'TR-1', 're-enabled deterministic mode mus
 assert.equal(detClock.isoTimestamp(), new Date(1000).toISOString(), 'isoTimestamp must reflect the pinned instant');
 detClock.disableDeterministicMode();
 
-console.log('frontend core regressions: 172 assertions passed');
+console.log('frontend core regressions: all assertions passed');

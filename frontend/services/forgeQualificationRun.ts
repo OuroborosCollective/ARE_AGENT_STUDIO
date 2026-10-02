@@ -32,6 +32,7 @@ export interface QualificationPrecondition {
   id: string;
   label: string;
   met: boolean;
+  evidence: ReadinessEvidence | null;
 }
 
 export interface EvidenceField {
@@ -41,7 +42,18 @@ export interface EvidenceField {
   source: string;
 }
 
+/** Caller-supplied evidence references; hashes bind receipts, not their truth.
+ * The orchestrator must read/verify these sources before supplying them. */
+export interface ReadinessEvidence {
+  receiptSha256: string;
+  sourceRef: string;
+  gitSha: string;
+}
+
 export interface QualificationRunInput {
+  readinessEvidence?: Record<string, ReadinessEvidence>;
+  reconciliationReceiptSha256?: string | null;
+  reconciliationCoverage?: string | null;
   runId: string | null;
   dungeonId: string | null;
   gitSha: string;
@@ -75,6 +87,8 @@ export interface QualificationEvidenceBundle {
 }
 
 const SHA256_RE = /^[a-f0-9]{64}$/;
+const GIT_SHA_RE = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
+const VERDICTS = ['VERIFIED', 'PARTIAL', 'MISMATCH', 'UNOBSERVABLE', 'UNPROVABLE'];
 
 async function sha256Hex(data: string): Promise<string> {
   if (!globalThis.crypto?.subtle) throw new Error('WebCrypto SHA-256 is unavailable; qualification hash cannot be computed.');
@@ -95,8 +109,8 @@ function canonicalJson(value: unknown): string {
 export function validateQualificationRunInput(input: Partial<QualificationRunInput>): string[] {
   const errors: string[] = [];
   if (!input || typeof input !== 'object') return ['input must be an object'];
-  if (typeof input.gitSha !== 'string' || !SHA256_RE.test(input.gitSha)) {
-    errors.push('gitSha must be a 64-char hex SHA-256');
+  if (typeof input.gitSha !== 'string' || !GIT_SHA_RE.test(input.gitSha)) {
+    errors.push('gitSha must be a full 40- or 64-char Git object ID');
   }
   if (typeof input.createdAtEpoch !== 'number' || !Number.isFinite(input.createdAtEpoch) || input.createdAtEpoch < 0) {
     errors.push('createdAtEpoch must be a non-negative finite number');
@@ -104,8 +118,8 @@ export function validateQualificationRunInput(input: Partial<QualificationRunInp
   if (typeof input.practiceRunAuthorized !== 'boolean') {
     errors.push('practiceRunAuthorized must be a boolean');
   }
-  if (input.runnerImageDigest != null && (typeof input.runnerImageDigest !== 'string' || !input.runnerImageDigest.trim())) {
-    errors.push('runnerImageDigest must be a non-empty string or null');
+  if (input.runnerImageDigest != null && (typeof input.runnerImageDigest !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(input.runnerImageDigest))) {
+    errors.push('runnerImageDigest must be sha256:<64 hex characters> or null');
   }
   if (input.policyRevisionSha256 != null && !SHA256_RE.test(input.policyRevisionSha256)) {
     errors.push('policyRevisionSha256 must be a 64-char hex SHA-256 or null');
@@ -131,30 +145,60 @@ export function validateQualificationRunInput(input: Partial<QualificationRunInp
   if (input.hfSnapshotManifestSha256 != null && !SHA256_RE.test(input.hfSnapshotManifestSha256)) {
     errors.push('hfSnapshotManifestSha256 must be a 64-char hex SHA-256 or null');
   }
+  for (const key of ['runId', 'dungeonId', 'terminalState', 'externalScore', 'reconciliationCoverage'] as const) {
+    if (input[key] != null && (typeof input[key] !== 'string' || !input[key]!.trim())) errors.push(`${key} must be non-empty or null`);
+  }
+  if (input.reconciliationVerdict != null && !VERDICTS.includes(input.reconciliationVerdict)) errors.push('unknown reconciliation verdict');
+  if (input.reconciliationReceiptSha256 != null && !SHA256_RE.test(input.reconciliationReceiptSha256)) errors.push('invalid reconciliation receipt hash');
+  if (input.readinessEvidence != null) {
+    if (typeof input.readinessEvidence !== 'object' || Array.isArray(input.readinessEvidence)) errors.push('readinessEvidence must be an object');
+    else for (const receipt of Object.values(input.readinessEvidence)) {
+      if (!receipt || typeof receipt.receiptSha256 !== 'string' || !SHA256_RE.test(receipt.receiptSha256)
+        || typeof receipt.sourceRef !== 'string' || !receipt.sourceRef.trim()
+        || typeof receipt.gitSha !== 'string' || !GIT_SHA_RE.test(receipt.gitSha)) errors.push('invalid readiness evidence reference');
+    }
+  }
   return errors;
 }
 
 export function checkQualificationPreconditions(input: QualificationRunInput): QualificationPrecondition[] {
-  return [
-    { id: 'structured_policy_contract', label: 'Structured policy contract live (#8)', met: input.policyRevisionSha256 != null },
-    { id: 'forge_adapter', label: 'Forge adapter live and contract re-read (#9)', met: input.forgeContractSha256 != null && input.skillMdSha256 != null },
-    { id: 'vps_runner', label: 'Dedicated VPS runner deployed (#11)', met: input.runnerImageDigest != null },
-    { id: 'trajectory_ledger', label: 'Trusted trajectory ledger (#10)', met: input.trajectoryRootHash != null },
-    { id: 'reconciliation_pipeline', label: 'Reconciliation pipeline ready (#12)', met: input.reconciliationVerdict != null },
-    { id: 'learning_pipeline', label: 'Learning pipeline ready but disabled until terminal (#13)', met: input.learningReceiptSha256 != null },
-    { id: 'hf_snapshot_pipeline', label: 'HF private snapshot pipeline ready (#16)', met: input.hfSnapshotManifestSha256 != null },
-    { id: 'rights_gate', label: 'Rights gate installed (#15)', met: true },
-    { id: 'training_receipt_lane', label: 'Training/evaluation receipt lane ready (#14)', met: input.policyConfigSha256 != null },
-    { id: 'ci_gates', label: 'CI/contract-drift/security gates installed (#19)', met: true },
-    { id: 'practice_run_authorized', label: 'Remaining practice allowance or owner-authorized run confirmed through real Forge readback', met: input.practiceRunAuthorized },
+  // Readiness is established BEFORE play. Post-run learning/snapshot outputs
+  // are optional and cannot be prerequisites for the run that creates them.
+  const checks: Array<[string, string, boolean]> = [
+    ['structured_policy_contract', 'Structured policy and config tested (#8)', !!input.policyRevisionSha256 && !!input.policyConfigSha256],
+    ['forge_adapter', 'Current run contract read and adapter tested (#9)', !!input.forgeContractSha256 && !!input.skillMdSha256],
+    ['vps_runner', 'Exact-revision runner deployed (#11)', !!input.runnerImageDigest],
+    ['trajectory_ledger', 'Trusted empty or existing ledger (#10)', true],
+    ['reconciliation_pipeline', 'Reconciliation pipeline ready (#12)', true],
+    ['learning_pipeline', 'Offline learning gated until terminal (#13)', true],
+    ['hf_snapshot_pipeline', 'Private snapshot pipeline ready (#16)', true],
+    ['rights_gate', 'Rights gate installed (#15)', true],
+    ['training_receipt_lane', 'Training receipt lane ready (#14)', !!input.policyConfigSha256],
+    ['ci_gates', 'Exact-head regressions green (#19)', true],
+    ['practice_run_authorized', 'Authorized free run confirmed by Forge readback', input.practiceRunAuthorized === true],
   ];
+  return checks.map(([id, label, configured]) => {
+    const reference = input.readinessEvidence?.[id];
+    const evidence = reference ? { ...reference } : null;
+    return { id, label, evidence, met: configured && evidence != null
+      && evidence.gitSha === input.gitSha && SHA256_RE.test(evidence.receiptSha256)
+      && typeof evidence.sourceRef === 'string' && evidence.sourceRef.trim().length > 0 };
+  });
 }
 
 function buildEvidenceFields(input: QualificationRunInput): EvidenceField[] {
-  const allMet = checkQualificationPreconditions(input).every((p) => p.met);
-  const hasRun = input.runId != null && input.terminalState != null;
+  const hasRun = input.runId != null;
 
   return [
+    ...([
+      ['policy_revision_selected', input.policyRevisionSha256],
+      ['policy_config_hash', input.policyConfigSha256],
+      ['skill_md_hash', input.skillMdSha256],
+      ['runner_image_digest', input.runnerImageDigest],
+    ] as Array<[string, string | null]>).map(([field, value]): EvidenceField => ({
+      field, value, status: value != null ? 'DERIVED' : 'UNPROVABLE',
+      source: 'Declared pre-run configuration; verification requires referenced readiness receipts',
+    })),
     {
       field: 'run_id',
       status: hasRun ? 'OBSERVED' : 'UNOBSERVABLE',
@@ -163,19 +207,19 @@ function buildEvidenceFields(input: QualificationRunInput): EvidenceField[] {
     },
     {
       field: 'dungeon_id',
-      status: hasRun ? 'OBSERVED' : 'UNOBSERVABLE',
+      status: input.dungeonId != null ? 'OBSERVED' : 'UNOBSERVABLE',
       value: input.dungeonId,
       source: hasRun ? 'Forge dungeon identifier' : 'no run executed',
     },
     {
       field: 'forge_contract_hash',
-      status: input.forgeContractSha256 != null ? 'VERIFIED' : 'UNOBSERVABLE',
+      status: input.forgeContractSha256 != null ? 'DERIVED' : 'UNOBSERVABLE',
       value: input.forgeContractSha256,
       source: input.forgeContractSha256 != null ? 'contract discovery' : 'no run executed',
     },
     {
       field: 'trajectory_root_hash',
-      status: input.trajectoryRootHash != null ? 'VERIFIED' : 'UNOBSERVABLE',
+      status: input.trajectoryRootHash != null ? 'DERIVED' : 'UNOBSERVABLE',
       value: input.trajectoryRootHash,
       source: input.trajectoryRootHash != null ? 'append-only ledger' : 'no run executed',
     },
@@ -187,45 +231,46 @@ function buildEvidenceFields(input: QualificationRunInput): EvidenceField[] {
     },
     {
       field: 'external_score',
-      status: input.externalScore != null ? 'VERIFIED' : 'UNOBSERVABLE',
+      status: input.externalScore != null ? 'OBSERVED' : 'UNOBSERVABLE',
       value: input.externalScore,
       source: input.externalScore != null ? 'Forge readback' : 'no run executed',
     },
     {
       field: 'reconciliation_verdict',
-      status: input.reconciliationVerdict != null ? 'VERIFIED' : 'UNOBSERVABLE',
+      status: input.reconciliationVerdict === 'MISMATCH' ? 'REJECTED' : input.reconciliationVerdict === 'PARTIAL' ? 'PARTIAL' : input.reconciliationVerdict === 'UNOBSERVABLE' ? 'UNOBSERVABLE' : input.reconciliationVerdict === 'UNPROVABLE' ? 'UNPROVABLE' : input.reconciliationVerdict != null ? 'DERIVED' : 'UNOBSERVABLE',
       value: input.reconciliationVerdict,
       source: input.reconciliationVerdict != null ? 'independent reconciliation' : 'no run executed',
     },
     {
       field: 'policy_revision_played',
-      status: input.policyRevisionSha256 != null ? 'DERIVED' : 'UNOBSERVABLE',
-      value: input.policyRevisionSha256,
+      status: hasRun && input.policyRevisionSha256 != null ? 'DERIVED' : 'UNOBSERVABLE',
+      value: hasRun ? input.policyRevisionSha256 : null,
       source: input.policyRevisionSha256 != null ? 'frozen policy revision' : 'no run executed',
     },
     {
       field: 'learning_receipt',
-      status: input.learningReceiptSha256 != null ? 'VERIFIED' : 'UNPROVABLE',
+      status: input.learningReceiptSha256 != null ? 'DERIVED' : 'UNPROVABLE',
       value: input.learningReceiptSha256,
       source: input.learningReceiptSha256 != null ? 'offline learning receipt' : 'no run to learn from',
     },
     {
       field: 'policy_n_plus_1_artifact',
-      status: input.policyNPlus1ArtifactHash != null ? 'VERIFIED' : 'UNPROVABLE',
+      status: input.policyNPlus1ArtifactHash != null ? 'DERIVED' : 'UNPROVABLE',
       value: input.policyNPlus1ArtifactHash,
       source: input.policyNPlus1ArtifactHash != null ? 'policy revision artifact' : 'no learning performed',
     },
     {
       field: 'hf_snapshot_manifest',
-      status: input.hfSnapshotManifestSha256 != null ? 'VERIFIED' : 'UNPROVABLE',
+      status: input.hfSnapshotManifestSha256 != null ? 'DERIVED' : 'UNPROVABLE',
       value: input.hfSnapshotManifestSha256,
       source: input.hfSnapshotManifestSha256 != null ? 'HF snapshot pipeline' : 'no snapshot uploaded',
     },
+    { field: 'reconciliation_receipt', status: input.reconciliationReceiptSha256 ? 'DERIVED' : 'UNPROVABLE', value: input.reconciliationReceiptSha256 ?? null, source: input.reconciliationCoverage ?? 'no reconciliation coverage supplied' },
     {
       field: 'source_runtime_revision',
       status: 'DERIVED',
       value: input.gitSha,
-      source: 'Git SHA available, no runtime deployed',
+      source: 'Declared source revision; deployment requires the vps_runner receipt',
     },
   ];
 }
@@ -241,9 +286,11 @@ export async function buildQualificationEvidenceBundle(input: QualificationRunIn
   const evidence = buildEvidenceFields(input);
 
   let status: QualificationRunStatus;
-  if (!allPreconditionsMet) {
+  const reconciled = ['VERIFIED', 'PARTIAL'].includes(input.reconciliationVerdict ?? '')
+    && !!input.reconciliationReceiptSha256 && !!input.reconciliationCoverage;
+  if (!allPreconditionsMet || (input.terminalState != null && (!input.runId || !input.trajectoryRootHash || !reconciled))) {
     status = 'BLOCKED';
-  } else if (input.terminalState != null && input.reconciliationVerdict != null) {
+  } else if (input.runId != null && input.terminalState != null && reconciled) {
     status = 'COMPLETED';
   } else if (input.runId != null) {
     status = 'EXECUTING';
