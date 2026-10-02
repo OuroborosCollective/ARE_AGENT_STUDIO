@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { ForgeConnector } from '../connector.js';
-import { projectDiscovery, readForgeAccount } from '../accountReadback.js';
+import { readForgeAccount } from '../accountReadback.js';
 
 const secret = ['fixture', 'credential', 'only'].join('-');
 const revision = 'a'.repeat(40);
@@ -32,7 +32,9 @@ test('uses fixed Forge GET endpoints, bearer header, redirect refusal and no ret
   assert.equal(receipt.entry_requests, 0);
   assert.ok(!JSON.stringify(receipt).includes(secret));
   assert.ok(!JSON.stringify(receipt).includes('private@example.test'));
-  assert.deepEqual(receipt.sources[0].aggregate_fields, [{ path: '$.freeRunsRemaining', type: 'counter', value: 2 }, { path: '$.dungeons', type: 'array', count: 1 }, { path: '$.runs', type: 'array', count: 0 }]);
+  assert.ok(!JSON.stringify(receipt).includes('freeRunsRemaining'));
+  assert.ok(!JSON.stringify(receipt).includes('aggregate_fields'));
+  assert.equal(receipt.sources[0].body_sha256, undefined);
 });
 
 for (const status of [401, 403, 402, 429, 500]) test(`HTTP ${status} is not authentication proof and body is never emitted`, async () => {
@@ -51,10 +53,6 @@ test('malformed, oversized and network responses fail closed', async () => {
     assert.equal(result.error_code, expected);
     assert.ok(!JSON.stringify(result).includes(secret));
   }
-});
-
-test('unknown, negative, string and nested user data are never projected as allowance', () => {
-  assert.deepEqual(projectDiscovery({ freeRunsRemaining: '2', remaining: -1, mystery: { remaining: 7 }, freeRuns: { remaining: 0, email: secret } }), [{ path: '$.freeRuns.remaining', type: 'counter', value: 0 }]);
 });
 
 test('real loopback HTTP exercises async bearer transport without contacting Forge', async t => {

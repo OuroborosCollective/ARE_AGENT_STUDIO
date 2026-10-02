@@ -1,33 +1,9 @@
-/** Account-authenticated GET-only evidence. No response text or identifiers in logs. */
+/** Account-authenticated GET-only technical evidence. No account data in logs. */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ForgeConnector, hashBody } from './connector.js';
 import { now } from './deterministicClock.js';
-
-// Only a small fixed set of aggregate fields may leave the private transport.
-const COUNTERS = new Set(['freeRunsRemaining', 'remainingFreeRuns', 'freeRunsUsed', 'freeRunsTotal', 'remaining', 'limit', 'total', 'used', 'available', 'remainingLifetimeFreeRuns', 'lifetimeFreeRunsRemaining']);
-const SAFE_KEYS = new Set(['dungeons', 'runs', 'activeRuns', 'existingRuns', 'freeRuns', 'freeRunAllowance', 'lifetimeFreeRuns', 'allowance', 'practice', 'data', ...COUNTERS]);
-export function projectDiscovery(data) {
-  const fields = [];
-  function visit(value, at, depth) {
-    if (depth > 5 || fields.length >= 100) return;
-    if (Array.isArray(value)) {
-      fields.push({ path: at, type: 'array', count: value.length });
-      // Individual runs/dungeons can contain credentials or user data.
-      return;
-    }
-    if (!value || typeof value !== 'object') return;
-    for (const [key, item] of Object.entries(value)) {
-      if (!SAFE_KEYS.has(key)) continue;
-      const next = `${at}.${key}`;
-      if (COUNTERS.has(key) && Number.isSafeInteger(item) && item >= 0) fields.push({ path: next, type: 'counter', value: item });
-      else if (item && typeof item === 'object') visit(item, next, depth + 1);
-    }
-  }
-  visit(data, '$', 0);
-  return fields;
-}
 
 export async function readForgeAccount({ credential, gitSha, fetchImpl } = {}) {
   if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(gitSha ?? '')) throw new Error('A full source revision is required.');
@@ -35,8 +11,7 @@ export async function readForgeAccount({ credential, gitSha, fetchImpl } = {}) {
   const sources = [];
   for (const call of [() => client.listDungeons(), () => client.listOwnedRuns()]) {
     const result = await call();
-    const { data, ...evidence } = result;
-    sources.push({ ...evidence, aggregate_fields: data ? projectDiscovery(data) : [] });
+    sources.push({ source: result.source, http_status: result.http_status, status: result.status, error_code: result.error_code });
   }
   const receipt = {
     schema_version: 'forge-account-readback.v1', source_git_sha: gitSha,

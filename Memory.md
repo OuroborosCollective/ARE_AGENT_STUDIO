@@ -364,3 +364,11 @@ Evidence: Local full check, backend 40 tests, runner 29 tests, frontend core/typ
 Learned: Closed scaffolding issues and a loaded contract are not deployment/readback proof; the old Docker command exited without serving, and the old qualification gate both rejected SHA-1 Git IDs and required future learning outputs.
 Open: No authenticated Forge/VPS target in this session; Huggi could not resolve the proposed dataset. Gameplay adapter/ledger/async transport/freeze/learning wiring and rights decisions still need live evidence. No run, score, training, upload or payment occurred.
 Next safe step: Complete exact-head CI and merge this bounded repair; keep #20 open until authenticated allowance/run readback and a fully wired dedicated gameplay runner establish the remaining gates.
+
+### 2026-10-02 — Forge account secret connected with live readback
+Status: PARTIAL — authenticated transport observed; gameplay remains BLOCKED
+Task: Connect the owner-provided Actions secret to a server-side Forge account transport.
+Changes: Controlled GET-only workflow, fixed origin/no redirects, bounded asynchronous responses, safe technical receipts, transport/error/leak and actual loopback regression tests.
+Evidence: Authenticated discovery was exercised successfully from the controlled Actions runtime; local full check and transport regressions pass. Exact-head CI remains the merge gate. No account-specific response data is committed.
+Learned: A configured secret can be verified without retrieving it; account readback must stay distinct from gameplay readiness. Automatic approval review rejected publishing account-specific receipt data, so public reporting was reduced to technical status only.
+Open/next: Finish the run-contract/runner integration and dedicated deployment. No entry, gameplay, learning, dataset upload or payment occurred.
