@@ -121,3 +121,18 @@ action/response → Forge readback → reconciliation → optional offline learn
 → HF snapshot, with no paid action and no fake evidence.
 
 **Current status: BLOCKED — requires authenticated Forge readback and completed, evidenced gameplay wiring/deployment.**
+
+## Authenticated account transport (2026-10-02)
+
+`FORGEAI_API_KEY` is consumed by `.github/workflows/forge-account-readback.yml`
+from the owner's Actions secret. This controlled workflow performs only GET
+requests to the fixed Forge origin, refuses redirects, bounds time/body size,
+and never retries or creates a run. It runs on main or the named integration
+branch, never on a pull-request event.
+
+Published technical receipts contain only source revision, HTTP/error status and
+endpoint references. Account allowance, run identities/counts, raw provider
+responses and response hashes are excluded from public artifacts and logs.
+An authenticated runtime request was exercised successfully before merge.
+Gameplay/VPS deployment and field-level rights decisions remain separate gates.
+Funding a wallet does not itself authorize payment.

@@ -1,0 +1,43 @@
+name: Forge account readback
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, feat/forge-authenticated-readback]
+    paths:
+      - '.github/workflows/forge-account-readback.yml'
+      - 'forge-runner/connector.js'
+      - 'forge-runner/accountReadback.js'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forge-account-readback
+  cancel-in-progress: false
+
+jobs:
+  read-account:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/forge-authenticated-readback'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read authenticated allowance and owned-run discovery (GET only)
+        env:
+          FORGEAI_API_KEY: ${{ secrets.FORGEAI_API_KEY }}
+          FORGE_READBACK_OUTPUT: ${{ runner.temp }}/forge-evidence/account-readback.json
+        run: node forge-runner/accountReadback.js
+      - name: Save sanitized source-bound receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-account-readback-${{ github.sha }}
+          path: ${{ runner.temp }}/forge-evidence/account-readback.json
+          if-no-files-found: error
+          retention-days: 14
